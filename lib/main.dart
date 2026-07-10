@@ -4,11 +4,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 void main() async {
-  // 確保 Flutter Web 引擎在背景完全初始化
   WidgetsFlutterBinding.ensureInitialized();
   
-  // 💡 【唯一需要你修改的地方】
-  // 請在此處填入你專屬的 Firebase Web 設定金鑰。如果你還沒設定好，可以先維持原樣測試介面，但連線資料庫時會暫時報錯。
   await Firebase.initializeApp(
     options: const FirebaseOptions(
       apiKey: "YOUR_API_KEY",
@@ -20,19 +17,16 @@ void main() async {
     ),
   );
 
-  // 🚀 自動初始設定雲端資料庫：如果你的 Firebase 是空的，打開網頁時會自動幫你灌入 4天行程與51家商店！
   await _initializeFirebaseDataIfNeeded();
 
   runApp(const BlackOrangeTravelApp());
 }
 
-// 🎨 黑橘工業風核心配色與粗黑框硬陰影樣式 (Neo-Brutalism Style)
 class IndustrialStyle {
-  static const Color bgMarble = Color(0xFFEFEFEF); // 淺灰大理石感底色
-  static const Color strokeBlack = Color(0xFF000000); // 極致粗黑框
-  static const Color accentOrange = Color(0xFFFF5500); // 亮橘色
+  static const Color bgMarble = Color(0xFFEFEFEF);
+  static const Color strokeBlack = Color(0xFF000000);
+  static const Color accentOrange = Color(0xFFFF5500);
 
-  // 貼紙浮空硬陰影 BoxDecoration 元件控制函數
   static BoxDecoration neoBox({Color color = Colors.white}) {
     return BoxDecoration(
       color: color,
@@ -40,8 +34,8 @@ class IndustrialStyle {
       boxShadow: const [
         BoxShadow(
           color: strokeBlack,
-          offset: Offset(5, 5), // 硬陰影位移
-          blurRadius: 0,        // 無模糊，呈現強烈工業貼紙感
+          offset: Offset(5, 5),
+          blurRadius: 0,
         )
       ],
     );
@@ -65,7 +59,6 @@ class BlackOrangeTravelApp extends StatelessWidget {
   }
 }
 
-// 🏠 首頁：雜誌風六宮格佈局 + 長輩天氣置頂看板
 class DashboardPage extends StatefulWidget {
   const DashboardPage({Key? key}) : super(key: key);
   @override
@@ -75,7 +68,7 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   bool _showFloatingCalc = false;
   double _calcJpy = 0;
-  final double _rate = 0.21; // 預設匯率參數
+  final double _rate = 0.21;
 
   @override
   Widget build(BuildContext context) {
@@ -94,7 +87,6 @@ class _DashboardPageState extends State<DashboardPage> {
             padding: const EdgeInsets.all(16.0),
             child: ListView(
               children: [
-                // ☀️ 今日福岡天氣卡片（長輩置頂防呆設計）
                 Container(
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: IndustrialStyle.neoBox(color: Colors.white),
@@ -117,7 +109,6 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                 ),
 
-                // 1. 行程表卡片：橫跨整列寬度（最顯眼最大）
                 InkWell(
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TimelinePage())),
                   child: Container(
@@ -213,7 +204,6 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 }
 
-// 🗓️ 功能一：時間軸行程表（含橫向日期選單與 Firebase 實時周邊搜尋）
 class TimelinePage extends StatefulWidget {
   const TimelinePage({Key? key}) : super(key: key);
   @override
@@ -225,7 +215,6 @@ class _TimelinePageState extends State<TimelinePage> {
   final List<String> _dates = ["9/25 (五)", "9/26 (六)", "9/27 (日)", "9/28 (一)"];
 
   void _searchNearbyGoogleMaps(String hotelName, String keyword) async {
-    // 1. 將中文飯店名自動轉化為日本 Google Maps 100% 聽得懂的官方日文登錄地址或名標，並翻譯搜尋關鍵字為日文
     String jpKeyword = keyword;
     if (keyword == '超市') jpKeyword = 'スーパー';
     if (keyword == '餐廳' || keyword == '美食店') jpKeyword = '飲食店';
@@ -237,12 +226,11 @@ class _TimelinePageState extends State<TimelinePage> {
 
     String searchAnchor = hotelName;
     if (hotelName.contains('西鐵克魯姆') || hotelName.contains('克魯姆')) {
-      searchAnchor = "西鉄ホテル クルーム博多祇園"; // 日本官方登錄飯店名稱，確保定位成功
+      searchAnchor = "西鉄ホテル クルーム博多祇園";
     } else if (hotelName.contains('Seven') || hotelName.contains('七')) {
       searchAnchor = "seven x seven 糸島";
     }
 
-    // 2. 使用日本當地的 "近くの"（附近的）關鍵字語法，確保 Google Maps 能精準吐出周邊地標
     final String encodedUrl = "https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent('$searchAnchor 近くの $jpKeyword')}";
     await launchUrl(Uri.parse(encodedUrl), mode: LaunchMode.platformDefault);
   }
@@ -272,7 +260,7 @@ class _TimelinePageState extends State<TimelinePage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: isSelected ? IndustrialStyle.accentOrange : Colors.grey[900],
                       foregroundColor: Colors.white,
-                      shape: const LinearBorder(),
+                      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                     ),
                     onPressed: () { setState(() { _selectedDayIndex = index; }); },
                     child: Text(_dates[index], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
@@ -296,7 +284,6 @@ class _TimelinePageState extends State<TimelinePage> {
                 return ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                    // 住宿點卡片 + 周邊精準地圖搜尋（新增公園與兒童景點）
                     Container(
                       decoration: IndustrialStyle.neoBox(color: Colors.white),
                       padding: const EdgeInsets.all(14),
@@ -312,7 +299,11 @@ class _TimelinePageState extends State<TimelinePage> {
                             spacing: 6, runSpacing: 6,
                             children: ['超市', '餐廳', '藥妝', '購物商店', '百貨公司', '公園', '兒童景點'].map((keyword) {
                               return ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(backgroundColor: Colors.black, foregroundColor: Colors.white, shape: const LinearBorder()),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.black, 
+                                  foregroundColor: Colors.white, 
+                                  shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                                ),
                                 onPressed: () => _searchNearbyGoogleMaps(hotel, keyword),
                                 icon: const Icon(Icons.search, size: 14, color: IndustrialStyle.accentOrange),
                                 label: Text(keyword, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
@@ -323,7 +314,6 @@ class _TimelinePageState extends State<TimelinePage> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    // 時間軸細項
                     if (items.isEmpty)
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 40),
@@ -350,12 +340,11 @@ class _TimelinePageState extends State<TimelinePage> {
                                 if (item['sub'] != null && item['sub'].toString().isNotEmpty)
                                   Text(item['sub'], style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
                                 const SizedBox(height: 8),
-                                // 行程導航地圖與交通路徑規劃大按鈕 (長輩防呆一鍵通)
                                 ElevatedButton.icon(
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.blueAccent,
                                     foregroundColor: Colors.white,
-                                    shape: const LinearBorder(),
+                                    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                                   ),
                                   onPressed: () => _getNavigationToEvent(item['event'] ?? ''),
                                   icon: const Icon(Icons.directions, size: 16),
@@ -378,11 +367,11 @@ class _TimelinePageState extends State<TimelinePage> {
         padding: const EdgeInsets.all(16.0),
         child: InkWell(
           onTap: () {
-            // 新增自訂行程
             FirebaseFirestore.instance.collection('travel_plan').where('day_index', isEqualTo: _selectedDayIndex).get().then((snap) {
               if (snap.docs.isNotEmpty) {
                 var doc = snap.docs.first;
-                List currentItems = doc.data()['items'] ?? [];
+                final Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+                List currentItems = data['items'] ?? [];
                 currentItems.add({'time': '12:00', 'event': '點擊地圖按鈕進行搜尋', 'sub': '自訂新增行程'});
                 currentItems.sort((a, b) => a['time'].compareTo(b['time']));
                 doc.reference.update({'items': currentItems});
@@ -401,7 +390,6 @@ class _TimelinePageState extends State<TimelinePage> {
   }
 }
 
-// 💰 功能二：記帳本（置頂大按鈕計算機）
 class LedgerPage extends StatefulWidget {
   const LedgerPage({Key? key}) : super(key: key);
   @override
@@ -453,7 +441,7 @@ class _LedgerPageState extends State<LedgerPage> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: btn == "記帳" ? IndustrialStyle.accentOrange : Colors.grey[900],
                         foregroundColor: Colors.white,
-                        shape: const LinearBorder(),
+                        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                       ),
                       onPressed: () {
                         if (btn == "記帳") {
@@ -501,7 +489,6 @@ class _LedgerPageState extends State<LedgerPage> {
   }
 }
 
-// 🍱 功能三：51筆完整口袋名單數據庫分頁（完美對齊與修正分類標籤篩選問題）
 class PocketListPage extends StatefulWidget {
   const PocketListPage({Key? key}) : super(key: key);
   @override
@@ -510,7 +497,6 @@ class PocketListPage extends StatefulWidget {
 
 class _PocketListPageState extends State<PocketListPage> {
   String _selectedCategory = "全部";
-  // 對齊圖片設計上的五大核心分類
   final List<String> _categories = ["全部", "餐廳", "超市", "伴手禮", "咖啡"];
 
   @override
@@ -545,7 +531,6 @@ class _PocketListPageState extends State<PocketListPage> {
               builder: (context, snapshot) {
                 if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
                 
-                // 動態篩選：將圖片五大標籤對應到 51筆口袋名單裡的字串
                 final docs = snapshot.data!.docs.where((doc) {
                   final data = doc.data() as Map<String, dynamic>;
                   final String dbCategory = data['category'] ?? '';
@@ -553,13 +538,10 @@ class _PocketListPageState extends State<PocketListPage> {
                   if (_selectedCategory == "全部") {
                     return true;
                   } else if (_selectedCategory == "餐廳") {
-                    // 「餐廳」對應資料庫中的「正餐」、「早餐」、「外帶」與「Bar」
                     return dbCategory == "正餐" || dbCategory == "早餐" || dbCategory == "餐廳" || dbCategory == "外帶" || dbCategory == "Bar";
                   } else if (_selectedCategory == "咖啡") {
-                    // 「咖啡」對應資料庫中的「咖啡/午茶」與「點心」
                     return dbCategory == "咖啡/午茶" || dbCategory == "點心" || dbCategory.contains("咖啡");
                   } else if (_selectedCategory == "超市") {
-                    // 「超市」對應資料庫中的「購物」
                     return dbCategory == "購物" || dbCategory == "超市";
                   } else if (_selectedCategory == "伴手禮") {
                     return dbCategory == "伴手禮";
@@ -596,7 +578,6 @@ class _PocketListPageState extends State<PocketListPage> {
   }
 }
 
-// 🧳 功能四：行李與伴手禮清單 (共用雲端勾選模板)
 class ChecklistPage extends StatelessWidget {
   final String collectionName;
   final String title;
@@ -653,7 +634,6 @@ class ChecklistPage extends StatelessWidget {
   }
 }
 
-// 🎫 功能五：折價券大全 (包含15家全福岡百貨、連鎖藥妝、電器超商完整雲端數據)
 class CouponPage extends StatelessWidget {
   const CouponPage({Key? key}) : super(key: key);
 
@@ -698,7 +678,6 @@ class CouponPage extends StatelessWidget {
   }
 }
 
-// 🗣️ 功能六：長輩專用免打字日文菜單快速解碼器
 class MenuTranslatorPage extends StatefulWidget {
   const MenuTranslatorPage({Key? key}) : super(key: key);
   @override
@@ -711,35 +690,30 @@ class _MenuTranslatorPageState extends State<MenuTranslatorPage> {
   final List<String> _tabs = ["🍜 麵食", "🥩 肉類", "🍣 海鮮", "🍺 飲料", "🗣️ 常用對話"];
 
   final List<List<Map<String, String>>> _foodData = [
-    // 🍜 麵食
     [
       {"jp": "豚骨ラーメン", "zh": "豚骨拉麵", "pron": "ton-kotsu raa-men"},
       {"jp": "うどん", "zh": "烏龍麵", "pron": "u-don"},
       {"jp": "そば", "zh": "蕎麥麵", "pron": "so-ba"},
       {"jp": "替え玉", "zh": "加麵", "pron": "ka-e da-ma"},
     ],
-    // 🥩 肉類
     [
       {"jp": "カルビ", "zh": "牛五花肉", "pron": "ka-ru-bi"},
       {"jp": "ロース", "zh": "牛里肌/沙朗", "pron": "roo-su"},
       {"jp": "タン", "zh": "牛舌", "pron": "tan"},
       {"jp": "焼き鳥", "zh": "烤雞肉串", "pron": "ya-ki-to-ri"},
     ],
-    // 🍣 海鮮
     [
       {"jp": "すし", "zh": "壽司", "pron": "su-shi"},
       {"jp": "さしみ", "zh": "生魚片", "pron": "sa-shi-mi"},
       {"jp": "e-bi", "zh": "蝦子", "pron": "e-bi"},
       {"jp": "マグロ", "zh": "鮪魚", "pron": "ma-gu-ro"},
     ],
-    // 🍺 飲料
     [
       {"jp": "ビール", "zh": "啤酒", "pron": "bii-ru"},
       {"jp": "日本酒", "zh": "日本清酒", "pron": "ni-hon-shu"},
       {"jp": "お茶", "zh": "綠茶/熱茶", "pron": "o-cha"},
       {"jp": "お水", "zh": "冰水 (免費)", "pron": "o-mi-zu"},
     ],
-    // 🗣️ 常用對話
     [
       {"jp": "これ、ください", "zh": "請給我這個 (指著菜單)", "pron": "ko-re ku-da-sai"},
       {"jp": "お会計、お願いします", "zh": "請幫我結帳", "pron": "o-kai-kei o-nei-gai-shi-masu"},
@@ -767,7 +741,11 @@ class _MenuTranslatorPageState extends State<MenuTranslatorPage> {
         ),
         actions: [
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.black, foregroundColor: Colors.white, shape: const LinearBorder()),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.black, 
+              foregroundColor: Colors.white, 
+              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+            ),
             onPressed: () => Navigator.pop(context),
             child: const Text('關閉視窗 CLOSE', style: TextStyle(fontWeight: FontWeight.bold)),
           )
@@ -782,7 +760,6 @@ class _MenuTranslatorPageState extends State<MenuTranslatorPage> {
       appBar: AppBar(title: const Text('🗣️ 長輩專用：日文點餐解碼器'), backgroundColor: Colors.black),
       body: Column(
         children: [
-          // 上方分類滾動列
           SizedBox(
             height: 60,
             child: ListView.builder(
@@ -796,7 +773,7 @@ class _MenuTranslatorPageState extends State<MenuTranslatorPage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: isSelected ? IndustrialStyle.accentOrange : Colors.grey[900],
                       foregroundColor: Colors.white,
-                      shape: const LinearBorder(),
+                      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                     ),
                     onPressed: () { setState(() { _activeTab = index; }); },
                     child: Text(_tabs[index], style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -805,7 +782,6 @@ class _MenuTranslatorPageState extends State<MenuTranslatorPage> {
               },
             ),
           ),
-          // 點擊即翻字卡網格
           Expanded(
             child: GridView.builder(
               padding: const EdgeInsets.all(16),
@@ -839,7 +815,7 @@ class _MenuTranslatorPageState extends State<MenuTranslatorPage> {
                           backgroundColor: Colors.black,
                           foregroundColor: Colors.white,
                           minimumSize: const Size(double.infinity, 32),
-                          shape: const LinearBorder(),
+                          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                         ),
                         onPressed: () => _showGiantTextDialog(item['jp']!, item['zh']!),
                         child: const Text('👉 大字給店員看', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
@@ -856,12 +832,10 @@ class _MenuTranslatorPageState extends State<MenuTranslatorPage> {
   }
 }
 
-// 🗄️ 雲端資料庫初始化函數：如果偵測到 Firestore 為空，自動幫你與朋友灌入所有人所有的福岡行程與51家商店、優惠券！
 Future<void> _initializeFirebaseDataIfNeeded() async {
   final travelSnap = await FirebaseFirestore.instance.collection('travel_plan').limit(1).get();
   
   if (travelSnap.docs.isEmpty) {
-    // 1. 灌入福岡 4天預設行程
     final List<Map<String, dynamic>> initialPlan = [
       {
         "day_index": 0, "date": "9/25 (五)", "title": "Day 1 · 出發與糸島",
@@ -893,7 +867,6 @@ Future<void> _initializeFirebaseDataIfNeeded() async {
       await FirebaseFirestore.instance.collection('travel_plan').add(plan);
     }
 
-    // 2. 灌入 51 筆口袋店家資料庫
     final List<Map<String, String>> shops = [
       {"name": "MaxValu 博多祇園店", "category": "購物"},
       {"name": "いくら博多店 はんばーぐと", "category": "正餐"},
@@ -952,7 +925,6 @@ Future<void> _initializeFirebaseDataIfNeeded() async {
       await FirebaseFirestore.instance.collection('pocket_list').add(shop);
     }
 
-    // 3. 灌入 15 筆福岡百貨、連鎖藥妝與大型商店優惠券
     final List<Map<String, dynamic>> fullCoupons = [
       {"category_id": 1, "mall": "天神岩田屋 (IWATAYA)", "benefit": "5% 折扣 Guest Card + 10% 免稅", "note": "至新館7樓退稅櫃台領取", "url": "https://www.iwataya-mitsukoshi.mistore.jp/"},
       {"category_id": 1, "mall": "博多阪急百貨 (Hakata Hankyu)", "benefit": "外國旅客專屬 5% 優惠券", "note": "至1樓服務台出示護照領取", "url": "https://www.hankyu-dept.co.jp/"},
@@ -974,19 +946,8 @@ Future<void> _initializeFirebaseDataIfNeeded() async {
       await FirebaseFirestore.instance.collection('coupons').add(coupon);
     }
 
-    // 4. 灌入行李預設勾選清單
     await FirebaseFirestore.instance.collection('luggage').add({"name": "護照、日幣現金、隨身包", "checked": false});
     await FirebaseFirestore.instance.collection('luggage').add({"name": "衣服褲子、換洗保養旅行裝", "checked": false});
     await FirebaseFirestore.instance.collection('luggage').add({"name": "行動電源、充電線與充電頭", "checked": false});
   }
 }
-```
-eof
-
----
-
-### 📘 最終導入與使用說明：
-
-我們剛剛生成的這份完整檔案，已經成功載入了你的所有福岡旅遊項目與 51 筆店家分類！
-
-只要你在貼進 `lib/main.dart` 之前，點選對話框右上方的 **Copy 鍵** 一鍵複製，它就絕對不會再發生擠成一行的狀況。貼上後修改好你的 Firebase Web 金鑰，你們的網頁 App 就能正式啟用，並與家人朋友即時同步共享最完美的福岡之旅囉！
