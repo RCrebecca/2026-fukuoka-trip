@@ -2,27 +2,331 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
 
 void main() async {
   // 確保 Flutter Web 引擎在背景完全初始化
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // 💡 請在此處填入您專屬的 Firebase Web 設定金鑰。
-  await Firebase.initializeApp(
-    options: const FirebaseOptions(
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_AUTH_DOMAIN",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_STORAGE_BUCKET",
-      messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-      appId: "YOUR_APP_ID",
-    ),
-  );
 
-  // 🚀 自動初始設定雲端資料庫：如果您的 Firebase 是空的，打開網頁時會自動灌入資料！
-  await _initializeFirebaseDataIfNeeded();
+  // 💡 【Firebase 雲端設定金鑰】
+  // 如果你還沒設定好，請先維持原樣 "YOUR_API_KEY"。
+  // 雙模版會自動辨識並切換至「離線高模擬展示模式」，100% 保證你的網頁不會白畫面！
+  const String apiKey = "YOUR_API_KEY";
+
+  if (apiKey != "YOUR_API_KEY" && apiKey.isNotEmpty) {
+    try {
+      await Firebase.initializeApp(
+        options: const FirebaseOptions(
+          apiKey: apiKey,
+          authDomain: "YOUR_AUTH_DOMAIN",
+          projectId: "YOUR_PROJECT_ID",
+          storageBucket: "YOUR_STORAGE_BUCKET",
+          messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+          appId: "YOUR_APP_ID",
+        ),
+      );
+      Db.isFirebase = true;
+      // 🚀 自動初始設定雲端資料庫：如果你的 Firebase 是空的，打開網頁時會自動幫你灌入 4天行程與51家商店！
+      await _initializeFirebaseDataIfNeeded();
+    } catch (e) {
+      // Firebase 初始化若失敗，自動降級切換至離線模式，避免白畫面
+      Db.isFirebase = false;
+      Db.initLocal();
+    }
+  } else {
+    // 尚未填入 Firebase 金鑰，自動啟用離線高模擬模式，所有功能均可 100% 順暢運作！
+    Db.isFirebase = false;
+    Db.initLocal();
+  }
 
   runApp(const BlackOrangeTravelApp());
+}
+
+// 🗄️ 超級雙模資料庫管理器 (整合 Firestore 與 In-Memory 本地模擬引擎)
+class Db {
+  static bool isFirebase = false;
+
+  // 本地離線記憶體快取
+  static List<Map<String, dynamic>> travelPlan = [];
+  static List<Map<String, dynamic>> expenses = [];
+  static List<Map<String, dynamic>> pocketList = [];
+  static List<Map<String, dynamic>> luggage = [];
+  static List<Map<String, dynamic>> souvenirs = [];
+  static List<Map<String, dynamic>> coupons = [];
+
+  // 本地模式廣播控制器
+  static final _travelPlanController = StreamController<List<Map<String, dynamic>>>.broadcast();
+  static final _expensesController = StreamController<List<Map<String, dynamic>>>.broadcast();
+  static final _pocketListController = StreamController<List<Map<String, dynamic>>>.broadcast();
+  static final _luggageController = StreamController<List<Map<String, dynamic>>>.broadcast();
+  static final _souvenirsController = StreamController<List<Map<String, dynamic>>>.broadcast();
+  static final _couponsController = StreamController<List<Map<String, dynamic>>>.broadcast();
+
+  // 灌入本地模擬初始數據 (內容與 Firebase 一模一樣，保證離線展示完美無缺！)
+  static void initLocal() {
+    travelPlan = [
+      {
+        "day_index": 0, "date": "9/25 (五)", "title": "Day 1 · 出發與糸島",
+        "hotel_name": "糸島 Seven*Seven (住宿房價 NT\$16,640)",
+        "items": [
+          {"time": "07:00", "event": "星宇航空 JX840", "sub": "09:35桃園機場 - 13:05福岡機場"},
+          {"time": "14:00", "event": "飯店辦理 Check In", "sub": "seven x seven 糸島"},
+          {"time": "16:00", "event": "糸島海鮮堂 二見ヶ浦本店", "sub": "享用超豐富海鮮"},
+          {"time": "17:00", "event": "二見ヶ浦海岸夫婦岩", "sub": "絕美夕陽地標"}
+        ]
+      },
+      {
+        "day_index": 1, "date": "9/26 (六)", "title": "Day 2 · 未排定行程",
+        "hotel_name": "博多祇園櫛田神社前西鐵克魯姆酒店 (3間房共 NT\$24,483)", "items": []
+      },
+      {
+        "day_index": 2, "date": "9/27 (日)", "title": "Day 3 · 未排定行程",
+        "hotel_name": "博多祇園櫛田神社前西鐵克魯姆酒店 (連續入住第2晚)", "items": []
+      },
+      {
+        "day_index": 3, "date": "9/28 (一)", "title": "Day 4 · 返航回家",
+        "hotel_name": "今日退房 (西鐵克魯姆酒店 11:00前)",
+        "items": [
+          {"time": "14:15", "event": "星宇航空 JX841", "sub": "14:15福岡機場 - 15:45桃園機場"}
+        ]
+      }
+    ];
+
+    pocketList = [
+      {"name": "MaxValu 博多祇園店", "category": "購物"},
+      {"name": "いくら博多店 はんばーぐと", "category": "正餐"},
+      {"name": "博多水炊 濱田屋 本店", "category": "正餐"},
+      {"name": "串燒 八兵衛", "category": "正餐"},
+      {"name": "燒肉 大東園 本店", "category": "正餐"},
+      {"name": "かわ屋 祇園店", "category": "正餐"},
+      {"name": "水炊名店 鳥田 博多本店", "category": "正餐"},
+      {"name": "24小時 築地壽司鮮", "category": "正餐"},
+      {"name": "食堂 おわん", "category": "早餐"},
+      {"name": "小料理屋 そのへん", "category": "正餐"},
+      {"name": "だしいなり 海木", "category": "點心"},
+      {"name": "柳橋食堂", "category": "正餐"},
+      {"name": "°F/concept", "category": "正餐"},
+      {"name": "Musashiza", "category": "正餐"},
+      {"name": "Hakata阿菜-Asa-", "category": "早餐"},
+      {"name": "Hakata seafood Uoden", "category": "正餐"},
+      {"name": "おいしいパスタ", "category": "正餐"},
+      {"name": "博多拉麵 ShinShin 博多DEITOS店", "category": "正餐"},
+      {"name": "Ganso Hakata Mentaiju", "category": "外帶"},
+      {"name": "博多一幸舍 博多本店", "category": "正餐"},
+      {"name": "本格燒鳥 大名へて 貳號店", "category": "正餐"},
+      {"name": "しちみ", "category": "正餐"},
+      {"name": "博多拉麵 ShinShin 天神本店", "category": "正餐"},
+      {"name": "Gohanya Hansuke", "category": "正餐"},
+      {"name": "博多水炊鍋專門 橙", "category": "正餐"},
+      {"name": "Robata no Ito Okashi", "category": "正餐"},
+      {"name": "福太郎 博多DEITOS店", "category": "伴手禮"},
+      {"name": "Torifumi Akasaka", "category": "正餐"},
+      {"name": "Sabataro", "category": "早餐"},
+      {"name": "Robata Hyakushiki", "category": "正餐"},
+      {"name": "Pain Stock Tenjin", "category": "早餐"},
+      {"name": "The Full Full Hakata", "category": "伴手禮"},
+      {"name": "博多駅の辛子明太子専門店", "category": "伴手禮"},
+      {"name": "SABOE HAKATA", "category": "購物"},
+      {"name": "小倉山莊 博多大丸店", "category": "伴手禮"},
+      {"name": "小倉山莊 阪急博多店", "category": "伴手禮"},
+      {"name": "明太子煎餅 博多風美庵", "category": "伴手禮"},
+      {"name": "鈴懸 博多DEITOS店", "category": "伴手禮"},
+      {"name": "如水庵 博多站DEITOS 1號店", "category": "伴手禮"},
+      {"name": "伊都King 博多MING店", "category": "伴手禮"},
+      {"name": "Dacomecca", "category": "早餐"},
+      {"name": "鈴懸 天神岩田屋店", "category": "伴手禮"},
+      {"name": "Full full", "category": "伴手禮"},
+      {"name": "AMAM DACOTAN Ropponmatsu", "category": "早餐"},
+      {"name": "Bread, Espresso & Hakata", "category": "咖啡/午茶"},
+      {"name": "NOOICE Tenjin", "category": "咖啡/午茶"},
+      {"name": "Imonne Hakata", "category": "點心"},
+      {"name": "白金茶房", "category": "咖啡/午茶"},
+      {"name": "Abeki", "category": "咖啡/午茶"},
+      {"name": "&LOCALS 大濠公園", "category": "咖啡/午茶"},
+      {"name": "百藥", "category": "Bar"},
+      {"name": "Oscar", "category": "Bar"}
+    ];
+
+    coupons = [
+      {"category_id": 1, "mall": "天神岩田屋 (IWATAYA)", "benefit": "5% 折扣 Guest Card + 10% 免稅", "note": "至新館7樓退稅櫃台領取", "url": "https://www.iwataya-mitsukoshi.mistore.jp/"},
+      {"category_id": 1, "mall": "博多阪急百貨 (Hakata Hankyu)", "benefit": "外國旅客專屬 5% 優惠券", "note": "至1樓服務台出示護照領取", "url": "https://www.hankyu-dept.co.jp/"},
+      {"category_id": 1, "mall": "福岡大丸百貨 (DAIMARU Tenjin)", "benefit": "5% 特典優惠券 + 10% 免稅", "note": "東館5樓海外顧客服務台領取", "url": "https://www.daimaru-fukuoka.jp/"},
+      {"category_id": 1, "mall": "福岡三越 (MITSUKOSHI)", "benefit": "5% 折扣卡 + 10% 免稅退稅", "note": "與岩田屋通用，服務台憑護照換取", "url": "https://www.iwataya-mitsukoshi.mistore.jp/"},
+      {"category_id": 1, "mall": "天神 PARCO", "benefit": "特定店家獨家折扣與贈品手冊", "note": "直接在櫃位結帳出示護照與官網優惠網頁", "url": "https://fukuoka.parco.jp/"},
+      {"category_id": 1, "mall": "博多運感城 (Canal City)", "benefit": "專屬外國旅客免稅優惠小手冊", "note": "至1樓綜合服務台出示護照換取", "url": "https://canalcity.co.jp/"},
+      {"category_id": 1, "mall": "福岡 LaLaport 百貨", "benefit": "最高享 10% 免稅 + 最高 10% 折扣優惠", "note": "現場掃描各樓面引導看板 QR code 領電子券", "url": "https://mitsui-shopping-park.com/"},
+      {"category_id": 2, "mall": "松本清藥妝 (Matsumoto Kiyoshi)", "benefit": "免稅 10% + 滿額最高再折 7%", "note": "結帳出示官方免稅折價券條碼", "url": "https://www.matsukiyo.co.jp/"},
+      {"category_id": 2, "mall": "大國藥妝 (Daikoku Drug)", "benefit": "免稅 10% + 最高加碼再折 8%", "note": "結帳出示大國藥妝電子優惠券畫面供刷條碼", "url": "https://www.daikokudrug.com/"},
+      {"category_id": 2, "mall": "鶴羽藥妝 (TSURUHA DRUG)", "benefit": "免稅 10% + 滿額現折最高 7%", "note": "結帳前出示電子折扣條碼供店員讀取", "url": "https://www.tsuruha.co.jp/"},
+      {"category_id": 2, "mall": "Cocokara Fine 藥妝店", "benefit": "免稅 10% + 最高再享 7% 加碼折扣", "note": "松本清旗下同享，結帳刷讀免稅優惠券", "url": "https://www.cocokarafine.co.jp/"},
+      {"category_id": 2, "mall": "尚都樂客 (Sun Drug 藥妝)", "benefit": "免稅 10% + 最高現折 7% 優惠", "note": "手機出示官方合作電子優惠條碼結帳", "url": "https://www.sundrug.co.jp/"},
+      {"category_id": 3, "mall": "驚安殿堂 唐吉訶德", "benefit": "免稅 10% + 滿一萬日圓現折 5%", "note": "結帳刷讀動態免稅電子條碼（截圖無效）", "url": "https://www.donki.com/"},
+      {"category_id": 3, "mall": "Bic Camera 天神館", "benefit": "免稅 10% + 電器折 7% / 藥妝折 5%", "note": "出示聯名信用卡或 Bic Camera 免稅折價券", "url": "https://www.biccamera.com/"},
+      {"category_id": 3, "mall": "Yodobashi Camera 博多店", "benefit": "免稅 10% + 指定信用卡刷卡折 5%", "note": "持配合之特定信用卡付款直接抵扣", "url": "https://www.yodobashi.com/"}
+    ];
+
+    luggage = [
+      {"name": "護照、日幣現金、隨身包", "checked": false},
+      {"name": "衣服褲子、換洗保養旅行裝", "checked": false},
+      {"name": "行動電源、充電線與充電頭", "checked": false}
+    ];
+
+    souvenirs = [
+      {"name": "小倉山莊 仙貝 🍘", "checked": false},
+      {"name": "福太郎 明太子仙貝 🌶️", "checked": false},
+      {"name": "博多通饅頭 🥮", "checked": false}
+    ];
+
+    expenses = [];
+
+    _publishAll();
+  }
+
+  static void _publishAll() {
+    _travelPlanController.add(List.from(travelPlan));
+    _expensesController.add(List.from(expenses));
+    _pocketListController.add(List.from(pocketList));
+    _luggageController.add(List.from(luggage));
+    _souvenirsController.add(List.from(souvenirs));
+    _couponsController.add(List.from(coupons));
+  }
+
+  // 🔔 讀取數據：自動適配 Firebase 與離線 Stream
+  static Stream<List<Map<String, dynamic>>> getTravelPlanStream(int dayIndex) {
+    if (isFirebase) {
+      return FirebaseFirestore.instance
+          .collection('travel_plan')
+          .where('day_index', isEqualTo: dayIndex)
+          .snapshots()
+          .map((snap) => snap.docs.map((doc) {
+                var d = doc.data();
+                d['id'] = doc.id;
+                return d;
+              }).toList());
+    } else {
+      return _travelPlanController.stream.map((list) =>
+          list.where((item) => item['day_index'] == dayIndex).toList());
+    }
+  }
+
+  static Stream<List<Map<String, dynamic>>> getExpensesStream() {
+    if (isFirebase) {
+      return FirebaseFirestore.instance
+          .collection('expenses')
+          .snapshots()
+          .map((snap) => snap.docs.map((doc) => doc.data()).toList());
+    } else {
+      return _expensesController.stream;
+    }
+  }
+
+  static Stream<List<Map<String, dynamic>>> getPocketListStream() {
+    if (isFirebase) {
+      return FirebaseFirestore.instance
+          .collection('pocket_list')
+          .snapshots()
+          .map((snap) => snap.docs.map((doc) => doc.data()).toList());
+    } else {
+      return _pocketListController.stream;
+    }
+  }
+
+  static Stream<List<Map<String, dynamic>>> getChecklistStream(String collection) {
+    if (isFirebase) {
+      return FirebaseFirestore.instance
+          .collection(collection)
+          .snapshots()
+          .map((snap) => snap.docs.map((doc) {
+                var d = doc.data();
+                d['id'] = doc.id;
+                return d;
+              }).toList());
+    } else {
+      if (collection == 'luggage') return _luggageController.stream;
+      return _souvenirsController.stream;
+    }
+  }
+
+  static Stream<List<Map<String, dynamic>>> getCouponsStream() {
+    if (isFirebase) {
+      return FirebaseFirestore.instance
+          .collection('coupons')
+          .orderBy('category_id')
+          .snapshots()
+          .map((snap) => snap.docs.map((doc) => doc.data()).toList());
+    } else {
+      return _couponsController.stream;
+    }
+  }
+
+  // ✍️ 寫入與異動：自動適配 Firebase 與離線機制
+  static void addTravelEvent(int dayIndex, String? docId) {
+    if (isFirebase && docId != null) {
+      FirebaseFirestore.instance.collection('travel_plan').doc(docId).get().then((doc) {
+        if (doc.exists) {
+          final data = doc.data() as Map<String, dynamic>;
+          List currentItems = data['items'] ?? [];
+          currentItems.add({'time': '12:00', 'event': '點擊地圖按鈕進行搜尋', 'sub': '自訂新增行程'});
+          currentItems.sort((a, b) => a['time'].compareTo(b['time']));
+          doc.reference.update({'items': currentItems});
+        }
+      });
+    } else {
+      for (var plan in travelPlan) {
+        if (plan['day_index'] == dayIndex) {
+          List items = plan['items'] ?? [];
+          items.add({'time': '12:00', 'event': '點擊地圖按鈕進行搜尋', 'sub': '自訂新增行程'});
+          items.sort((a, b) => a['time'].compareTo(b['time']));
+          plan['items'] = items;
+          break;
+        }
+      }
+      _publishAll();
+    }
+  }
+
+  static void addExpense(double jpy, double twd) {
+    if (isFirebase) {
+      FirebaseFirestore.instance.collection('expenses').add({
+        'jpy': jpy,
+        'twd': twd,
+        'title': '共用花費記帳'
+      });
+    } else {
+      expenses.add({
+        'jpy': jpy,
+        'twd': twd,
+        'title': '共用花費記帳'
+      });
+      _publishAll();
+    }
+  }
+
+  static void toggleCheck(String collection, int localIndex, String? docId, bool val) {
+    if (isFirebase && docId != null) {
+      FirebaseFirestore.instance.collection(collection).doc(docId).update({'checked': val});
+    } else {
+      if (collection == 'luggage') {
+        luggage[localIndex]['checked'] = val;
+      } else {
+        souvenirs[localIndex]['checked'] = val;
+      }
+      _publishAll();
+    }
+  }
+
+  static void addChecklistItem(String collection, String name) {
+    if (isFirebase) {
+      FirebaseFirestore.instance.collection(collection).add({'name': name, 'checked': false});
+    } else {
+      if (collection == 'luggage') {
+        luggage.add({'name': name, 'checked': false});
+      } else {
+        souvenirs.add({'name': name, 'checked': false});
+      }
+      _publishAll();
+    }
+  }
 }
 
 // 🎨 黑橘工業風核心配色與粗黑框硬陰影樣式 (Neo-Brutalism Style)
@@ -35,7 +339,7 @@ class IndustrialStyle {
   static BoxDecoration neoBox({Color color = Colors.white}) {
     return BoxDecoration(
       color: color,
-      border: Border.all(color: strokeBlack, width: 3.5),
+      border: Border.all(strokeBlack, width: 3.5),
       boxShadow: const [
         BoxShadow(
           color: strokeBlack,
@@ -93,7 +397,7 @@ class _DashboardPageState extends State<DashboardPage> {
             padding: const EdgeInsets.all(16.0),
             child: ListView(
               children: [
-                // ☀️ 今日福岡天氣卡片（長輩置頂防防呆設計）
+                // ☀️ 今日福岡天氣卡片（長輩置頂防呆設計）
                 Container(
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: IndustrialStyle.neoBox(color: Colors.white),
@@ -212,7 +516,7 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 }
 
-// 🗓️ 功能一：時間軸行程表（含橫向日期選單與 Firebase 實時周邊搜尋）
+// 🗓️ 功能一：時間軸行程表（含橫向日期選單與實時周邊搜尋）
 class TimelinePage extends StatefulWidget {
   const TimelinePage({Key? key}) : super(key: key);
   @override
@@ -224,7 +528,6 @@ class _TimelinePageState extends State<TimelinePage> {
   final List<String> _dates = ["9/25 (五)", "9/26 (六)", "9/27 (日)", "9/28 (一)"];
 
   void _searchNearbyGoogleMaps(String hotelName, String keyword) async {
-    // 1. 將中文飯店名自動轉化為日本 Google Maps 100% 聽得懂的官方日文登錄地址或名標，並翻譯搜尋關鍵字為日文
     String jpKeyword = keyword;
     if (keyword == '超市') jpKeyword = 'スーパー';
     if (keyword == '餐廳' || keyword == '美食店') jpKeyword = '飲食店';
@@ -236,12 +539,11 @@ class _TimelinePageState extends State<TimelinePage> {
 
     String searchAnchor = hotelName;
     if (hotelName.contains('西鐵克魯姆') || hotelName.contains('克魯姆')) {
-      searchAnchor = "西鉄ホテル クルーム博多祇園"; // 日本官方登錄飯店名稱，確保定位成功
+      searchAnchor = "西鉄ホテル クルーム博多祇園";
     } else if (hotelName.contains('Seven') || hotelName.contains('七')) {
       searchAnchor = "seven x seven 糸島";
     }
 
-    // 2. 使用日本當地的 "近くの"（附近的）關鍵字語法，確保 Google Maps 能精準吐出周邊地標
     final String encodedUrl = "https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent('$searchAnchor 近くの $jpKeyword')}";
     await launchUrl(Uri.parse(encodedUrl), mode: LaunchMode.platformDefault);
   }
@@ -281,21 +583,21 @@ class _TimelinePageState extends State<TimelinePage> {
             ),
           ),
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance.collection('travel_plan').where('day_index', isEqualTo: _selectedDayIndex).snapshots(),
+            child: StreamBuilder<List<Map<String, dynamic>>>(
+              stream: Db.getTravelPlanStream(_selectedDayIndex),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                final docs = snapshot.data!.docs;
+                final docs = snapshot.data!;
                 if (docs.isEmpty) return const Center(child: Text('暫無行程數據'));
 
-                final data = docs.first.data() as Map<String, dynamic>;
+                final data = docs.first;
                 final String hotel = data['hotel_name'] ?? '西鐵克魯姆酒店';
+                final String? docId = data['id']; // Firebase 模式下才會有
                 final List items = data['items'] ?? [];
 
                 return ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                    // 住宿點卡片 + 周邊精準地圖搜尋（新增公園與兒童景點）
                     Container(
                       decoration: IndustrialStyle.neoBox(color: Colors.white),
                       padding: const EdgeInsets.all(14),
@@ -326,7 +628,6 @@ class _TimelinePageState extends State<TimelinePage> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    // 時間軸細項
                     if (items.isEmpty)
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 40),
@@ -353,7 +654,6 @@ class _TimelinePageState extends State<TimelinePage> {
                                 if (item['sub'] != null && item['sub'].toString().isNotEmpty)
                                   Text(item['sub'], style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
                                 const SizedBox(height: 8),
-                                // 行程導航地圖與交通路徑規劃大按鈕 (長輩防呆一鍵通)
                                 ElevatedButton.icon(
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.blueAccent,
@@ -379,26 +679,20 @@ class _TimelinePageState extends State<TimelinePage> {
       ),
       bottomNavigationBar: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: InkWell(
-          onTap: () {
-            // 新增自訂行程 (強制進行型態安全轉換)
-            FirebaseFirestore.instance.collection('travel_plan').where('day_index', isEqualTo: _selectedDayIndex).get().then((snap) {
-              if (snap.docs.isNotEmpty) {
-                var doc = snap.docs.first;
-                final Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-                List currentItems = data['items'] ?? [];
-                currentItems.add({'time': '12:00', 'event': '點擊地圖按鈕進行搜尋', 'sub': '自訂新增行程'});
-                currentItems.sort((a, b) => a['time'].compareTo(b['time']));
-                doc.reference.update({'items': currentItems});
-              }
-            });
-          },
-          child: Container(
-            height: 52,
-            decoration: IndustrialStyle.neoBox(color: IndustrialStyle.accentOrange),
-            alignment: Alignment.center,
-            child: const Text('ADD TIMELINE EVENT +', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-          ),
+        child: StreamBuilder<List<Map<String, dynamic>>>(
+          stream: Db.getTravelPlanStream(_selectedDayIndex),
+          builder: (context, snapshot) {
+            final String? docId = (snapshot.hasData && snapshot.data!.isNotEmpty) ? snapshot.data!.first['id'] : null;
+            return InkWell(
+              onTap: () => Db.addTravelEvent(_selectedDayIndex, docId),
+              child: Container(
+                height: 52,
+                decoration: IndustrialStyle.neoBox(color: IndustrialStyle.accentOrange),
+                alignment: Alignment.center,
+                child: const Text('ADD TIMELINE EVENT +', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+              ),
+            );
+          }
         ),
       ),
     );
@@ -461,11 +755,7 @@ class _LedgerPageState extends State<LedgerPage> {
                       ),
                       onPressed: () {
                         if (btn == "記帳") {
-                          FirebaseFirestore.instance.collection('expenses').add({
-                            'jpy': double.parse(_inputExpression),
-                            'twd': twdCalc,
-                            'title': '共用花費記帳'
-                          });
+                          Db.addExpense(double.parse(_inputExpression), twdCalc);
                           _pressKey("C");
                         } else { _pressKey(btn); }
                       },
@@ -477,15 +767,15 @@ class _LedgerPageState extends State<LedgerPage> {
             ),
           ),
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance.collection('expenses').snapshots(),
+            child: StreamBuilder<List<Map<String, dynamic>>>(
+              stream: Db.getExpensesStream(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                final docs = snapshot.data!.docs;
+                final docs = snapshot.data!;
                 return ListView.builder(
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
-                    final data = docs[index].data() as Map<String, dynamic>;
+                    final data = docs[index];
                     return Card(
                       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       shape: const Border(),
@@ -543,26 +833,21 @@ class _PocketListPageState extends State<PocketListPage> {
             ),
           ),
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance.collection('pocket_list').snapshots(),
+            child: StreamBuilder<List<Map<String, dynamic>>>(
+              stream: Db.getPocketListStream(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                
-                // 動態篩選：將圖片五大標籤對應到 51筆口袋名單裡的字串
-                final docs = snapshot.data!.docs.where((doc) {
-                  final data = doc.data() as Map<String, dynamic>;
-                  final String dbCategory = data['category'] ?? '';
+
+                final docs = snapshot.data!.where((item) {
+                  final String dbCategory = item['category'] ?? '';
                   
                   if (_selectedCategory == "全部") {
                     return true;
                   } else if (_selectedCategory == "餐廳") {
-                    // 「餐廳」對應資料庫中的「正餐」、「早餐」、「餐廳」、「外帶」與「Bar」
                     return dbCategory == "正餐" || dbCategory == "早餐" || dbCategory == "餐廳" || dbCategory == "外帶" || dbCategory == "Bar";
                   } else if (_selectedCategory == "咖啡") {
-                    // 「咖啡」對應資料庫中的「咖啡/午茶」與「點心」
                     return dbCategory == "咖啡/午茶" || dbCategory == "點心" || dbCategory.contains("咖啡");
                   } else if (_selectedCategory == "超市") {
-                    // 「超市」對應資料庫中的「購物」與「超市」
                     return dbCategory == "購物" || dbCategory == "超市";
                   } else if (_selectedCategory == "伴手禮") {
                     return dbCategory == "伴手禮";
@@ -577,7 +862,7 @@ class _PocketListPageState extends State<PocketListPage> {
                 return ListView.builder(
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
-                    final shop = docs[index].data() as Map<String, dynamic>;
+                    final shop = docs[index];
                     return Container(
                       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                       decoration: IndustrialStyle.neoBox(),
@@ -599,7 +884,7 @@ class _PocketListPageState extends State<PocketListPage> {
   }
 }
 
-// 🧳 功能四：行李與伴手禮清單 (共用雲端勾選模板)
+// 🧳 功能四：行李與伴手禮清單 (共用雲端/本地 雙模勾選模板)
 class ChecklistPage extends StatelessWidget {
   final String collectionName;
   final String title;
@@ -609,18 +894,19 @@ class ChecklistPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(title), backgroundColor: Colors.black, foregroundColor: Colors.white),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection(collectionName).snapshots(),
+      body: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: Db.getChecklistStream(collectionName),
         builder: (context, snapshot) {
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-          final docs = snapshot.data!.docs;
+          final docs = snapshot.data!;
 
           return ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: docs.length,
             itemBuilder: (context, index) {
-              final data = docs[index].data() as Map<String, dynamic>;
+              final data = docs[index];
               final bool isChecked = data['checked'] ?? false;
+              final String? docId = data['id']; // Firebase 模式才會有
 
               return Container(
                 margin: const EdgeInsets.only(bottom: 10),
@@ -630,7 +916,7 @@ class ChecklistPage extends StatelessWidget {
                   title: Text(data['name'] ?? '', style: TextStyle(fontWeight: FontWeight.bold, decoration: isChecked ? TextDecoration.lineThrough : null)),
                   value: isChecked,
                   onChanged: (val) {
-                    FirebaseFirestore.instance.collection(collectionName).doc(docs[index].id).update({'checked': val});
+                    Db.toggleCheck(collectionName, index, docId, val ?? false);
                   },
                 ),
               );
@@ -642,7 +928,7 @@ class ChecklistPage extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: InkWell(
           onTap: () {
-            FirebaseFirestore.instance.collection(collectionName).add({'name': '自訂新增清單項', 'checked': false});
+            Db.addChecklistItem(collectionName, '自訂新增清單項');
           },
           child: Container(
             height: 52,
@@ -656,7 +942,7 @@ class ChecklistPage extends StatelessWidget {
   }
 }
 
-// 🎫 功能五：折價券大全 (包含15家全福岡百貨、連鎖藥妝、電器超商完整雲端數據)
+// 🎫 功能五：折價券大全 (包含15家全福岡百貨、連鎖藥妝、電器超商數據)
 class CouponPage extends StatelessWidget {
   const CouponPage({Key? key}) : super(key: key);
 
@@ -664,17 +950,17 @@ class CouponPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('福岡優惠券大全 COUPONS'), backgroundColor: Colors.black, foregroundColor: Colors.white),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance.collection('coupons').orderBy('category_id').snapshots(),
+      body: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: Db.getCouponsStream(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-          final docs = snapshot.data!.docs;
+          final docs = snapshot.data!;
 
           return ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: docs.length,
             itemBuilder: (context, index) {
-              final coupon = docs[index].data() as Map<String, dynamic>;
+              final coupon = docs[index];
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 decoration: IndustrialStyle.neoBox(),
@@ -766,8 +1052,8 @@ class _MenuTranslatorPageState extends State<MenuTranslatorPage> {
         actions: [
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.black, 
-              foregroundColor: Colors.white, 
+              backgroundColor: Colors.black,
+              foregroundColor: Colors.white,
               shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
             ),
             onPressed: () => Navigator.pop(context),
@@ -856,9 +1142,10 @@ class _MenuTranslatorPageState extends State<MenuTranslatorPage> {
   }
 }
 
+// 🗄️ 雲端資料庫初始化函數：僅在 Firebase 模式成功連線時，於資料庫全空時寫入初始資料
 Future<void> _initializeFirebaseDataIfNeeded() async {
   final travelSnap = await FirebaseFirestore.instance.collection('travel_plan').limit(1).get();
-  
+
   if (travelSnap.docs.isEmpty) {
     final List<Map<String, dynamic>> initialPlan = [
       {
