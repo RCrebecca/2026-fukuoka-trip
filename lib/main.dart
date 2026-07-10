@@ -4,8 +4,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 void main() async {
+  // 確保 Flutter Web 引擎在背景完全初始化
   WidgetsFlutterBinding.ensureInitialized();
   
+  // 💡 請在此處填入您專屬的 Firebase Web 設定金鑰。
   await Firebase.initializeApp(
     options: const FirebaseOptions(
       apiKey: "YOUR_API_KEY",
@@ -17,16 +19,19 @@ void main() async {
     ),
   );
 
+  // 🚀 自動初始設定雲端資料庫：如果您的 Firebase 是空的，打開網頁時會自動灌入資料！
   await _initializeFirebaseDataIfNeeded();
 
   runApp(const BlackOrangeTravelApp());
 }
 
+// 🎨 黑橘工業風核心配色與粗黑框硬陰影樣式 (Neo-Brutalism Style)
 class IndustrialStyle {
-  static const Color bgMarble = Color(0xFFEFEFEF);
-  static const Color strokeBlack = Color(0xFF000000);
-  static const Color accentOrange = Color(0xFFFF5500);
+  static const Color bgMarble = Color(0xFFEFEFEF); // 淺灰大理石感底色
+  static const Color strokeBlack = Color(0xFF000000); // 極致粗黑框
+  static const Color accentOrange = Color(0xFFFF5500); // 亮橘色
 
+  // 貼紙浮空硬陰影 BoxDecoration 元件控制函數
   static BoxDecoration neoBox({Color color = Colors.white}) {
     return BoxDecoration(
       color: color,
@@ -34,8 +39,8 @@ class IndustrialStyle {
       boxShadow: const [
         BoxShadow(
           color: strokeBlack,
-          offset: Offset(5, 5),
-          blurRadius: 0,
+          offset: Offset(5, 5), // 硬陰影位移
+          blurRadius: 0,        // 無模糊，呈現強烈工業貼紙感
         )
       ],
     );
@@ -51,7 +56,7 @@ class BlackOrangeTravelApp extends StatelessWidget {
       theme: ThemeData(
         scaffoldBackgroundColor: IndustrialStyle.bgMarble,
         textTheme: const TextTheme(
-          bodyLarge: TextStyle(fontFamily: 'Arial Black', fontWeight: FontWeight.black, color: Colors.black),
+          bodyLarge: TextStyle(fontFamily: 'Arial Black', fontWeight: FontWeight.w900, color: Colors.black),
         ),
       ),
       home: const DashboardPage(),
@@ -59,6 +64,7 @@ class BlackOrangeTravelApp extends StatelessWidget {
   }
 }
 
+// 🏠 首頁：雜誌風六宮格佈局 + 長輩天氣置頂看板
 class DashboardPage extends StatefulWidget {
   const DashboardPage({Key? key}) : super(key: key);
   @override
@@ -68,13 +74,13 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   bool _showFloatingCalc = false;
   double _calcJpy = 0;
-  final double _rate = 0.21;
+  final double _rate = 0.21; // 預設匯率參數
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('FUKUOKA INDUSTRIAL TRIP', style: TextStyle(fontWeight: FontWeight.black, fontSize: 18, letterSpacing: 1.5)),
+        title: const Text('FUKUOKA INDUSTRIAL TRIP', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, letterSpacing: 1.5)),
         backgroundColor: IndustrialStyle.accentOrange,
         foregroundColor: Colors.black,
         centerTitle: true,
@@ -87,6 +93,7 @@ class _DashboardPageState extends State<DashboardPage> {
             padding: const EdgeInsets.all(16.0),
             child: ListView(
               children: [
+                // ☀️ 今日福岡天氣卡片（長輩置頂防防呆設計）
                 Container(
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: IndustrialStyle.neoBox(color: Colors.white),
@@ -100,7 +107,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text('今日福岡天氣 TODAY', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
-                            const Text('☀️ 26°C ~ 30°C 晴朗', style: TextStyle(fontSize: 18, fontWeight: FontWeight.black)),
+                            const Text('☀️ 26°C ~ 30°C 晴朗', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
                             Text('💡 穿著建議：早晚微涼，長輩出門記得帶件「薄防風外套」唷！', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey[800])),
                           ],
                         ),
@@ -109,6 +116,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                 ),
 
+                // 1. 行程表卡片：橫跨整列寬度（最顯眼最大）
                 InkWell(
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TimelinePage())),
                   child: Container(
@@ -122,7 +130,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       children: [
                         Icon(Icons.calendar_view_day, size: 32, color: Colors.black),
                         SizedBox(height: 6),
-                        Text('每日行程表 TIMELINE', style: TextStyle(fontSize: 20, fontWeight: FontWeight.black)),
+                        Text('每日行程表 TIMELINE', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
                         Text('橫向日期切換 · 飯店周邊日本在地五大快捷搜尋', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                       ],
                     ),
@@ -160,7 +168,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text('全域快速換算 (0.21)', style: TextStyle(fontWeight: FontWeight.black, fontSize: 13)),
+                    const Text('全域快速換算 (0.21)', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
                     const Divider(color: Colors.black, thickness: 2),
                     TextField(
                       keyboardType: TextInputType.number,
@@ -168,7 +176,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       onChanged: (val) { setState(() { _calcJpy = double.tryParse(val) ?? 0; }); },
                     ),
                     const SizedBox(height: 8),
-                    Text('台幣：\$${(_calcJpy * _rate).toStringAsFixed(1)} TWD', style: const TextStyle(color: IndustrialStyle.accentOrange, fontWeight: FontWeight.black, fontSize: 15)),
+                    Text('台幣：\$${(_calcJpy * _rate).toStringAsFixed(1)} TWD', style: const TextStyle(color: IndustrialStyle.accentOrange, fontWeight: FontWeight.w900, fontSize: 15)),
                   ],
                 ),
               ),
@@ -196,7 +204,7 @@ class _DashboardPageState extends State<DashboardPage> {
           children: [
             Icon(icon, size: 32, color: Colors.black),
             const SizedBox(height: 8),
-            Text(text, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.black)),
+            Text(text, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900)),
           ],
         ),
       ),
@@ -204,6 +212,7 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 }
 
+// 🗓️ 功能一：時間軸行程表（含橫向日期選單與 Firebase 實時周邊搜尋）
 class TimelinePage extends StatefulWidget {
   const TimelinePage({Key? key}) : super(key: key);
   @override
@@ -215,6 +224,7 @@ class _TimelinePageState extends State<TimelinePage> {
   final List<String> _dates = ["9/25 (五)", "9/26 (六)", "9/27 (日)", "9/28 (一)"];
 
   void _searchNearbyGoogleMaps(String hotelName, String keyword) async {
+    // 1. 將中文飯店名自動轉化為日本 Google Maps 100% 聽得懂的官方日文登錄地址或名標，並翻譯搜尋關鍵字為日文
     String jpKeyword = keyword;
     if (keyword == '超市') jpKeyword = 'スーパー';
     if (keyword == '餐廳' || keyword == '美食店') jpKeyword = '飲食店';
@@ -226,11 +236,12 @@ class _TimelinePageState extends State<TimelinePage> {
 
     String searchAnchor = hotelName;
     if (hotelName.contains('西鐵克魯姆') || hotelName.contains('克魯姆')) {
-      searchAnchor = "西鉄ホテル クルーム博多祇園";
+      searchAnchor = "西鉄ホテル クルーム博多祇園"; // 日本官方登錄飯店名稱，確保定位成功
     } else if (hotelName.contains('Seven') || hotelName.contains('七')) {
       searchAnchor = "seven x seven 糸島";
     }
 
+    // 2. 使用日本當地的 "近くの"（附近的）關鍵字語法，確保 Google Maps 能精準吐出周邊地標
     final String encodedUrl = "https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent('$searchAnchor 近くの $jpKeyword')}";
     await launchUrl(Uri.parse(encodedUrl), mode: LaunchMode.platformDefault);
   }
@@ -284,6 +295,7 @@ class _TimelinePageState extends State<TimelinePage> {
                 return ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
+                    // 住宿點卡片 + 周邊精準地圖搜尋（新增公園與兒童景點）
                     Container(
                       decoration: IndustrialStyle.neoBox(color: Colors.white),
                       padding: const EdgeInsets.all(14),
@@ -291,9 +303,9 @@ class _TimelinePageState extends State<TimelinePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('🏨 當日住宿飯店 (Elders Home)：', style: TextStyle(color: Colors.grey[700], fontSize: 12, fontWeight: FontWeight.bold)),
-                          Text(hotel, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.black, color: IndustrialStyle.accentOrange)),
+                          Text(hotel, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: IndustrialStyle.accentOrange)),
                           const Divider(color: Colors.black, thickness: 2),
-                          const Text('搜尋飯店周邊（保證找出結果）：', style: TextStyle(fontSize: 13, fontWeight: FontWeight.black)),
+                          const Text('搜尋飯店周邊（保證找出結果）：', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900)),
                           const SizedBox(height: 6),
                           Wrap(
                             spacing: 6, runSpacing: 6,
@@ -314,6 +326,7 @@ class _TimelinePageState extends State<TimelinePage> {
                       ),
                     ),
                     const SizedBox(height: 20),
+                    // 時間軸細項
                     if (items.isEmpty)
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 40),
@@ -336,10 +349,11 @@ class _TimelinePageState extends State<TimelinePage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(item['event'] ?? '', style: const TextStyle(fontWeight: FontWeight.black, fontSize: 15)),
+                                Text(item['event'] ?? '', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
                                 if (item['sub'] != null && item['sub'].toString().isNotEmpty)
                                   Text(item['sub'], style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
                                 const SizedBox(height: 8),
+                                // 行程導航地圖與交通路徑規劃大按鈕 (長輩防呆一鍵通)
                                 ElevatedButton.icon(
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.blueAccent,
@@ -348,7 +362,7 @@ class _TimelinePageState extends State<TimelinePage> {
                                   ),
                                   onPressed: () => _getNavigationToEvent(item['event'] ?? ''),
                                   icon: const Icon(Icons.directions, size: 16),
-                                  label: const Text('打開地圖與交通路徑 🧭', style: TextStyle(fontWeight: FontWeight.black, fontSize: 12)),
+                                  label: const Text('打開地圖與交通路徑 🧭', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12)),
                                 )
                               ],
                             ),
@@ -367,6 +381,7 @@ class _TimelinePageState extends State<TimelinePage> {
         padding: const EdgeInsets.all(16.0),
         child: InkWell(
           onTap: () {
+            // 新增自訂行程 (強制進行型態安全轉換)
             FirebaseFirestore.instance.collection('travel_plan').where('day_index', isEqualTo: _selectedDayIndex).get().then((snap) {
               if (snap.docs.isNotEmpty) {
                 var doc = snap.docs.first;
@@ -382,7 +397,7 @@ class _TimelinePageState extends State<TimelinePage> {
             height: 52,
             decoration: IndustrialStyle.neoBox(color: IndustrialStyle.accentOrange),
             alignment: Alignment.center,
-            child: const Text('ADD TIMELINE EVENT +', style: TextStyle(fontWeight: FontWeight.black, fontSize: 16)),
+            child: const Text('ADD TIMELINE EVENT +', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
           ),
         ),
       ),
@@ -390,6 +405,7 @@ class _TimelinePageState extends State<TimelinePage> {
   }
 }
 
+// 💰 功能二：記帳本（置頂大按鈕計算機）
 class LedgerPage extends StatefulWidget {
   const LedgerPage({Key? key}) : super(key: key);
   @override
@@ -427,7 +443,7 @@ class _LedgerPageState extends State<LedgerPage> {
                   padding: const EdgeInsets.all(12),
                   color: Colors.white,
                   alignment: Alignment.centerRight,
-                  child: Text('¥ $_inputExpression (TWD \$${twdCalc.toStringAsFixed(0)})', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.black)),
+                  child: Text('¥ $_inputExpression (TWD \$${twdCalc.toStringAsFixed(0)})', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
                 ),
                 const SizedBox(height: 12),
                 GridView.count(
@@ -453,7 +469,7 @@ class _LedgerPageState extends State<LedgerPage> {
                           _pressKey("C");
                         } else { _pressKey(btn); }
                       },
-                      child: Text(btn, style: const TextStyle(fontWeight: FontWeight.black, fontSize: 16)),
+                      child: Text(btn, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
                     );
                   }).toList(),
                 )
@@ -475,7 +491,7 @@ class _LedgerPageState extends State<LedgerPage> {
                       shape: const Border(),
                       child: ListTile(
                         title: const Text('旅遊支出項', style: TextStyle(fontWeight: FontWeight.bold)),
-                        trailing: Text('NT \$${data['twd']?.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.black, color: IndustrialStyle.accentOrange)),
+                        trailing: Text('NT \$${data['twd']?.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.w900, color: IndustrialStyle.accentOrange)),
                       ),
                     );
                   },
@@ -489,6 +505,7 @@ class _LedgerPageState extends State<LedgerPage> {
   }
 }
 
+// 🍱 功能三：51筆完整口袋名單數據庫分頁（完美對齊與修正分類標籤篩選問題）
 class PocketListPage extends StatefulWidget {
   const PocketListPage({Key? key}) : super(key: key);
   @override
@@ -531,6 +548,7 @@ class _PocketListPageState extends State<PocketListPage> {
               builder: (context, snapshot) {
                 if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
                 
+                // 動態篩選：將圖片五大標籤對應到 51筆口袋名單裡的字串
                 final docs = snapshot.data!.docs.where((doc) {
                   final data = doc.data() as Map<String, dynamic>;
                   final String dbCategory = data['category'] ?? '';
@@ -538,10 +556,13 @@ class _PocketListPageState extends State<PocketListPage> {
                   if (_selectedCategory == "全部") {
                     return true;
                   } else if (_selectedCategory == "餐廳") {
+                    // 「餐廳」對應資料庫中的「正餐」、「早餐」、「餐廳」、「外帶」與「Bar」
                     return dbCategory == "正餐" || dbCategory == "早餐" || dbCategory == "餐廳" || dbCategory == "外帶" || dbCategory == "Bar";
                   } else if (_selectedCategory == "咖啡") {
+                    // 「咖啡」對應資料庫中的「咖啡/午茶」與「點心」
                     return dbCategory == "咖啡/午茶" || dbCategory == "點心" || dbCategory.contains("咖啡");
                   } else if (_selectedCategory == "超市") {
+                    // 「超市」對應資料庫中的「購物」與「超市」
                     return dbCategory == "購物" || dbCategory == "超市";
                   } else if (_selectedCategory == "伴手禮") {
                     return dbCategory == "伴手禮";
@@ -578,6 +599,7 @@ class _PocketListPageState extends State<PocketListPage> {
   }
 }
 
+// 🧳 功能四：行李與伴手禮清單 (共用雲端勾選模板)
 class ChecklistPage extends StatelessWidget {
   final String collectionName;
   final String title;
@@ -626,7 +648,7 @@ class ChecklistPage extends StatelessWidget {
             height: 52,
             decoration: IndustrialStyle.neoBox(color: Colors.black),
             alignment: Alignment.center,
-            child: const Text('ADD NEW ITEM +', style: TextStyle(color: IndustrialStyle.accentOrange, fontWeight: FontWeight.black, fontSize: 15)),
+            child: const Text('ADD NEW ITEM +', style: TextStyle(color: IndustrialStyle.accentOrange, fontWeight: FontWeight.w900, fontSize: 15)),
           ),
         ),
       ),
@@ -634,6 +656,7 @@ class ChecklistPage extends StatelessWidget {
   }
 }
 
+// 🎫 功能五：折價券大全 (包含15家全福岡百貨、連鎖藥妝、電器超商完整雲端數據)
 class CouponPage extends StatelessWidget {
   const CouponPage({Key? key}) : super(key: key);
 
@@ -656,12 +679,12 @@ class CouponPage extends StatelessWidget {
                 margin: const EdgeInsets.only(bottom: 12),
                 decoration: IndustrialStyle.neoBox(),
                 child: ListTile(
-                  title: Text(coupon['mall'] ?? '', style: const TextStyle(fontWeight: FontWeight.black, fontSize: 16)),
+                  title: Text(coupon['mall'] ?? '', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 4),
-                      Text('🎁 優惠：${coupon['benefit'] ?? ''}', style: const TextStyle(color: IndustrialStyle.accentOrange, fontWeight: FontWeight.black, fontSize: 13)),
+                      Text('🎁 優惠：${coupon['benefit'] ?? ''}', style: const TextStyle(color: IndustrialStyle.accentOrange, fontWeight: FontWeight.w900, fontSize: 13)),
                       if (coupon['note'] != null)
                         Text('💡 方式：${coupon['note']}', style: const TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold)),
                     ],
@@ -678,6 +701,7 @@ class CouponPage extends StatelessWidget {
   }
 }
 
+// 🗣️ 功能六：長輩專用免打字日文菜單快速解碼器
 class MenuTranslatorPage extends StatefulWidget {
   const MenuTranslatorPage({Key? key}) : super(key: key);
   @override
@@ -734,7 +758,7 @@ class _MenuTranslatorPageState extends State<MenuTranslatorPage> {
           children: [
             const Divider(color: Colors.black, thickness: 3),
             const SizedBox(height: 16),
-            Text(jp, textAlign: TextAlign.center, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.black, color: IndustrialStyle.accentOrange)),
+            Text(jp, textAlign: TextAlign.center, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: IndustrialStyle.accentOrange)),
             const SizedBox(height: 16),
             Text('中文意思：$zh', textAlign: TextAlign.center, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
           ],
@@ -804,7 +828,7 @@ class _MenuTranslatorPageState extends State<MenuTranslatorPage> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(item['jp']!, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.black, color: IndustrialStyle.accentOrange)),
+                          Text(item['jp']!, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: IndustrialStyle.accentOrange)),
                           const SizedBox(height: 2),
                           Text('🔊 拼音: ${item['pron']!}', style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
                         ],
