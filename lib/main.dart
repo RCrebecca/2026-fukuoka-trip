@@ -2,14 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // 導入本機儲存套件
-import 'dart:convert'; // 導入 JSON 轉換工具
 import 'dart:async';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // 你的專屬 Firebase 金鑰
+  // 你專屬的 Firebase 金鑰
   const String apiKey = "AIzaSyAsvVaZyk-MwAfmGhtnQbTnKfLNLad5myY";
 
   if (apiKey != "YOUR_API_KEY" && apiKey.isNotEmpty) {
@@ -28,11 +26,11 @@ void main() async {
       await _initializeFirebaseDataIfNeeded();
     } catch (e) {
       Db.isFirebase = false;
-      await Db.initLocal();
+      Db.initLocal();
     }
   } else {
     Db.isFirebase = false;
-    await Db.initLocal();
+    Db.initLocal();
   }
 
   runApp(const BlackOrangeTravelApp());
@@ -75,43 +73,34 @@ class Db {
     return _pocketListController.stream;
   }
 
-  // 初始化本機資料庫 (加入了 Future 標籤，解決 void 錯誤)
-  static Future<void> initLocal() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String? savedPlan = prefs.getString('travelPlan');
-    
-    if (savedPlan != null) {
-      List<dynamic> decoded = jsonDecode(savedPlan);
-      travelPlan = decoded.map((e) => Map<String, dynamic>.from(e)).toList();
-    } else {
-      travelPlan = [
-        {
-          "day_index": 0, "date": "9/25 (五)", "title": "Day 1 · 出發與糸島",
-          "hotel_name": "糸島 Seven*Seven (住宿房價 NT\$16,640)",
-          "items": [
-            {"time": "07:00", "event": "星宇航空 JX840", "sub": "09:35桃園機場 - 13:05福岡機場"},
-            {"time": "14:00", "event": "飯店辦理 Check In", "sub": "seven x seven 糸島"},
-            {"time": "16:00", "event": "糸島海鮮堂 二見ヶ浦本店", "sub": "享用超豐富海鮮"},
-            {"time": "17:00", "event": "二見ヶ浦海岸夫婦岩", "sub": "絕美夕陽地標"}
-          ]
-        },
-        {
-          "day_index": 1, "date": "9/26 (六)", "title": "Day 2 · 未排定行程",
-          "hotel_name": "博多祇園櫛田神社前西鐵克魯姆酒店 (3間房共 NT\$24,483)", "items": []
-        },
-        {
-          "day_index": 2, "date": "9/27 (日)", "title": "Day 3 · 未排定行程",
-          "hotel_name": "博多祇園櫛田神社前西鐵克魯姆酒店 (連續入住第2晚)", "items": []
-        },
-        {
-          "day_index": 3, "date": "9/28 (一)", "title": "Day 4 · 返航回家",
-          "hotel_name": "今日退房 (西鐵克魯姆酒店 11:00前)",
-          "items": [
-            {"time": "14:15", "event": "星宇航空 JX841", "sub": "14:15福岡機場 - 15:45桃園機場"}
-          ]
-        }
-      ];
-    }
+  static void initLocal() {
+    travelPlan = [
+      {
+        "day_index": 0, "date": "9/25 (五)", "title": "Day 1 · 出發與糸島",
+        "hotel_name": "糸島 Seven*Seven (住宿房價 NT\$16,640)",
+        "items": [
+          {"time": "07:00", "event": "星宇航空 JX840", "sub": "09:35桃園機場 - 13:05福岡機場"},
+          {"time": "14:00", "event": "飯店辦理 Check In", "sub": "seven x seven 糸島"},
+          {"time": "16:00", "event": "糸島海鮮堂 二見ヶ浦本店", "sub": "享用超豐富海鮮"},
+          {"time": "17:00", "event": "二見ヶ浦海岸夫婦岩", "sub": "絕美夕陽地標"}
+        ]
+      },
+      {
+        "day_index": 1, "date": "9/26 (六)", "title": "Day 2 · 未排定行程",
+        "hotel_name": "博多祇園櫛田神社前西鐵克魯姆酒店 (3間房共 NT\$24,483)", "items": []
+      },
+      {
+        "day_index": 2, "date": "9/27 (日)", "title": "Day 3 · 未排定行程",
+        "hotel_name": "博多祇園櫛田神社前西鐵克魯姆酒店 (連續入住第2晚)", "items": []
+      },
+      {
+        "day_index": 3, "date": "9/28 (一)", "title": "Day 4 · 返航回家",
+        "hotel_name": "今日退房 (西鐵克魯姆酒店 11:00前)",
+        "items": [
+          {"time": "14:15", "event": "星宇航空 JX841", "sub": "14:15福岡機場 - 15:45桃園機場"}
+        ]
+      }
+    ];
 
     pocketList = [
       {"name": "MaxValu 博多祇園店", "category": "購物"},
@@ -169,12 +158,6 @@ class Db {
     ];
 
     refreshAllStreams();
-  }
-
-  // 將行程存入設備本機
-  static Future<void> saveLocalData() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('travelPlan', jsonEncode(travelPlan));
   }
 
   static void refreshAllStreams() {
@@ -460,7 +443,6 @@ class _TimelinePageState extends State<TimelinePage> {
                   docRef.update({'items': items});
                 } else if (localIndex != -1) {
                   Db.travelPlan[localIndex]['items'] = items;
-                  Db.saveLocalData();
                   Db.refreshAllStreams();
                 }
 
@@ -501,7 +483,6 @@ class _TimelinePageState extends State<TimelinePage> {
                 docRef.update({'items': items});
               } else if (localIndex != -1) {
                 Db.travelPlan[localIndex]['items'] = items;
-                Db.saveLocalData();
                 Db.refreshAllStreams();
               }
               Navigator.pop(context);
@@ -688,7 +669,7 @@ class _TimelinePageState extends State<TimelinePage> {
                                 onTap: () => _showEventEditor(data, docRef: docRef, localIndex: localIndex, itemIndex: index),
                                 child: const Padding(padding: EdgeInsets.symmetric(horizontal: 6), child: Icon(Icons.edit, size: 20, color: Colors.blueGrey)),
                               ),
-                              Ink সেল(
+                              InkWell(
                                 onTap: () => _deleteEvent(data, index, docRef: docRef, localIndex: localIndex),
                                 child: const Padding(padding: EdgeInsets.symmetric(horizontal: 6), child: Icon(Icons.delete, size: 20, color: Colors.red)),
                               ),
@@ -766,7 +747,6 @@ class _PocketListPageState extends State<PocketListPage> {
         items.add(newItem);
         items.sort((a, b) => a['time'].toString().compareTo(b['time'].toString()));
         Db.travelPlan[localIndex]['items'] = items;
-        Db.saveLocalData();
         Db.refreshAllStreams();
       }
     }
