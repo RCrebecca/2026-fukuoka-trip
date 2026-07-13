@@ -7,34 +7,34 @@ import 'dart:async';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  const String apiKey = "YOUR_API_KEY";
+  // 👇 這裡已經換成你專屬的福岡旅遊 App 金鑰囉！
+  const String apiKey = "AIzaSyAsvVaZyk-MwAfmGhtnQbTnKfLNLad5myY";
 
   if (apiKey != "YOUR_API_KEY" && apiKey.isNotEmpty) {
     try {
       await Firebase.initializeApp(
         options: const FirebaseOptions(
           apiKey: apiKey,
-          authDomain: "YOUR_AUTH_DOMAIN",
-          projectId: "YOUR_PROJECT_ID",
-          storageBucket: "YOUR_STORAGE_BUCKET",
-          messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-          appId: "YOUR_APP_ID",
+          authDomain: "y-fukuoka-trip.firebaseapp.com",
+          projectId: "y-fukuoka-trip",
+          storageBucket: "y-fukuoka-trip.firebasestorage.app",
+          messagingSenderId: "1097824951606",
+          appId: "1:1097824951606:web:6260f1b06f92b95c706797",
         ),
       );
       Db.isFirebase = true;
       await _initializeFirebaseDataIfNeeded();
     } catch (e) {
       Db.isFirebase = false;
-      Db.initLocal();
+      await Db.initLocal();
     }
   } else {
     Db.isFirebase = false;
-    Db.initLocal();
+    await Db.initLocal();
   }
 
   runApp(const BlackOrangeTravelApp());
 }
-
 class IndustrialStyle {
   static const Color bgMarble = Color(0xFFEFEFEF);
   static const Color strokeBlack = Color(0xFF000000);
