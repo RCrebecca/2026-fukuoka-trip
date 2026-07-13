@@ -334,39 +334,82 @@ class _TimelinePageState extends State<TimelinePage> {
       context: context,
       builder: (context) {
         return AlertDialog(
+          // 關鍵修正：允許視窗內容滾動，避免鍵盤遮擋導致 TextField 無法被點擊或編輯
+          scrollable: true, 
           backgroundColor: Colors.white,
           shape: const RoundedRectangleBorder(side: BorderSide(color: Colors.black, width: 3), borderRadius: BorderRadius.zero),
           title: Text(isEdit ? '✏️ 編輯行程' : '➕ 新增行程', style: const TextStyle(fontWeight: FontWeight.w900)),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: timeCtrl, 
-                  decoration: const InputDecoration(labelText: '時間 (例：14:30)', border: OutlineInputBorder(), focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: IndustrialStyle.accentOrange, width: 2))),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: timeCtrl, 
+                decoration: const InputDecoration(labelText: '時間 (例：14:30)', border: OutlineInputBorder(), focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: IndustrialStyle.accentOrange, width: 2))),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: eventCtrl, 
+                decoration: const InputDecoration(labelText: '地點 / 事件名稱', border: OutlineInputBorder(), focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: IndustrialStyle.accentOrange, width: 2))),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: subCtrl, 
+                decoration: const InputDecoration(labelText: '備註細節 (可留白)', border: OutlineInputBorder(), focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: IndustrialStyle.accentOrange, width: 2))),
+              ),
+              const SizedBox(height: 16),
+              
+              // 全新升級：精準定位小幫手區塊
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  border: Border.all(color: Colors.black, width: 2)
                 ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: eventCtrl, 
-                  decoration: const InputDecoration(labelText: '地點 / 事件名稱', border: OutlineInputBorder(), focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: IndustrialStyle.accentOrange, width: 2))),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.location_on, color: IndustrialStyle.accentOrange, size: 18),
+                        SizedBox(width: 4),
+                        Text('精準定位小幫手', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13)),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    const Text('輸入上方地點後，點擊下方按鈕去地圖「複製分享連結」，貼在最底下即可完美鎖定！', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey)),
+                    const SizedBox(height: 12),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black, 
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 36),
+                        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                      ),
+                      onPressed: () {
+                        // 擷取名稱欄位去搜尋，為空則預設搜福岡
+                        final query = eventCtrl.text.trim().isNotEmpty ? eventCtrl.text.trim() : '福岡';
+                        final String encodedUrl = "https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(query)}";
+                        launchUrl(Uri.parse(encodedUrl), mode: LaunchMode.externalApplication);
+                      },
+                      icon: const Icon(Icons.search, size: 16),
+                      label: const Text('1. 打開地圖搜尋此地點', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: mapUrlCtrl, 
+                      decoration: const InputDecoration(
+                        labelText: '2. 貼上地圖分享連結', 
+                        hintText: 'https://maps.app.goo.gl/...',
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(), 
+                        focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: IndustrialStyle.accentOrange, width: 2))
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: subCtrl, 
-                  decoration: const InputDecoration(labelText: '備註細節 (可留白)', border: OutlineInputBorder(), focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: IndustrialStyle.accentOrange, width: 2))),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: mapUrlCtrl, 
-                  decoration: const InputDecoration(
-                    labelText: 'Google Maps 精準連結 (選填)', 
-                    hintText: '貼上地圖分享網址...',
-                    border: OutlineInputBorder(), 
-                    focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: IndustrialStyle.accentOrange, width: 2))
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
           actions: [
             TextButton(
@@ -682,7 +725,6 @@ class _PocketListPageState extends State<PocketListPage> {
   final List<String> _categories = ["全部", "餐廳", "超市", "伴手禮", "咖啡"];
   final List<String> _dayOptions = ["9/25 (五) - Day 1", "9/26 (六) - Day 2", "9/27 (日) - Day 3", "9/28 (一) - Day 4"];
 
-  // 執行將店家寫入行程表的資料庫邏輯
   Future<void> _saveToTimeline(int dayIndex, String time, String event, String sub, String mapUrl) async {
     final newItem = {
       'time': time.trim(),
@@ -707,12 +749,11 @@ class _PocketListPageState extends State<PocketListPage> {
         items.add(newItem);
         items.sort((a, b) => a['time'].toString().compareTo(b['time'].toString()));
         Db.travelPlan[localIndex]['items'] = items;
-        Db.refreshAllStreams(); // 強制推播更新
+        Db.refreshAllStreams();
       }
     }
   }
 
-  // 彈出對話框：設定日期、時間與備註
   void _showAddToTimelineDialog(BuildContext context, String shopName, String mapUrl) {
     int selectedDay = 0;
     final timeCtrl = TextEditingController(text: '12:00');
@@ -724,36 +765,35 @@ class _PocketListPageState extends State<PocketListPage> {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
+              scrollable: true, // 同步解決口袋名單加入行程時的鍵盤遮擋問題
               backgroundColor: Colors.white,
               shape: const RoundedRectangleBorder(side: BorderSide(color: Colors.black, width: 3), borderRadius: BorderRadius.zero),
               title: const Text('➕ 將店家加入行程', style: TextStyle(fontWeight: FontWeight.w900)),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('📍 $shopName', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: IndustrialStyle.accentOrange)),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<int>(
-                      value: selectedDay,
-                      decoration: const InputDecoration(labelText: '選擇日期', border: OutlineInputBorder(), focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: IndustrialStyle.accentOrange, width: 2))),
-                      items: List.generate(_dayOptions.length, (index) => DropdownMenuItem(value: index, child: Text(_dayOptions[index], style: const TextStyle(fontWeight: FontWeight.bold)))),
-                      onChanged: (val) {
-                        if (val != null) setState(() => selectedDay = val);
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: timeCtrl,
-                      decoration: const InputDecoration(labelText: '設定時間 (例：12:30)', border: OutlineInputBorder(), focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: IndustrialStyle.accentOrange, width: 2))),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: subCtrl,
-                      decoration: const InputDecoration(labelText: '行程備註 (選填)', border: OutlineInputBorder(), focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: IndustrialStyle.accentOrange, width: 2))),
-                    ),
-                  ],
-                ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('📍 $shopName', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: IndustrialStyle.accentOrange)),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<int>(
+                    value: selectedDay,
+                    decoration: const InputDecoration(labelText: '選擇日期', border: OutlineInputBorder(), focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: IndustrialStyle.accentOrange, width: 2))),
+                    items: List.generate(_dayOptions.length, (index) => DropdownMenuItem(value: index, child: Text(_dayOptions[index], style: const TextStyle(fontWeight: FontWeight.bold)))),
+                    onChanged: (val) {
+                      if (val != null) setState(() => selectedDay = val);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: timeCtrl,
+                    decoration: const InputDecoration(labelText: '設定時間 (例：12:30)', border: OutlineInputBorder(), focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: IndustrialStyle.accentOrange, width: 2))),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: subCtrl,
+                    decoration: const InputDecoration(labelText: '行程備註 (選填)', border: OutlineInputBorder(), focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: IndustrialStyle.accentOrange, width: 2))),
+                  ),
+                ],
               ),
               actions: [
                 TextButton(
@@ -767,12 +807,10 @@ class _PocketListPageState extends State<PocketListPage> {
                     shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                   ),
                   onPressed: () async {
-                    // 將資料寫入行程表
                     await _saveToTimeline(selectedDay, timeCtrl.text, shopName, subCtrl.text, mapUrl);
                     
                     if (ctx.mounted) {
                       Navigator.pop(ctx);
-                      // 顯示成功提示
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: const Text('✅ 已成功加入行程表並同步！', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -866,7 +904,6 @@ class _PocketListPageState extends State<PocketListPage> {
           child: ListTile(
             title: Text(shopName, style: const TextStyle(fontWeight: FontWeight.bold)),
             subtitle: Text(shop['category'] ?? '', style: const TextStyle(color: IndustrialStyle.accentOrange, fontWeight: FontWeight.bold, fontSize: 12)),
-            // 改為包含兩個按鈕的 Row：一個加行程、一個開地圖
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
