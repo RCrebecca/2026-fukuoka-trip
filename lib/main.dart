@@ -58,25 +58,20 @@ class IndustrialStyle {
 class Db {
   static bool isFirebase = false;
   static List<Map<String, dynamic>> travelPlan = [];
-  static List<Map<String, dynamic>> expenses = [];
   static List<Map<String, dynamic>> pocketList = [];
-  static List<Map<String, dynamic>> luggage = [];
-  static List<Map<String, dynamic>> souvenirs = [];
-  static List<Map<String, dynamic>> coupons = [];
 
   static final _travelPlanController = StreamController<List<Map<String, dynamic>>>.broadcast();
-  static final _expensesController = StreamController<List<Map<String, dynamic>>>.broadcast();
   static final _pocketListController = StreamController<List<Map<String, dynamic>>>.broadcast();
-  static final _luggageController = StreamController<List<Map<String, dynamic>>>.broadcast();
-  static final _souvenirsController = StreamController<List<Map<String, dynamic>>>.broadcast();
-  static final _couponsController = StreamController<List<Map<String, dynamic>>>.broadcast();
 
-  static Stream<List<Map<String, dynamic>>> get travelPlanStream => _travelPlanController.stream;
-  static Stream<List<Map<String, dynamic>>> get expensesStream => _expensesController.stream;
-  static Stream<List<Map<String, dynamic>>> get pocketListStream => _pocketListController.stream;
-  static Stream<List<Map<String, dynamic>>> get luggageStream => _luggageController.stream;
-  static Stream<List<Map<String, dynamic>>> get souvenirsStream => _souvenirsController.stream;
-  static Stream<List<Map<String, dynamic>>> get couponsStream => _couponsController.stream;
+  // 當 Stream 被監聽時，主動噴出當前快照資料，徹底解決進頁面無限轉圈的問題
+  static Stream<List<Map<String, dynamic>>> get travelPlanStream {
+    Timer.run(() => _travelPlanController.add(List.from(travelPlan)));
+    return _travelPlanController.stream;
+  }
+  static Stream<List<Map<String, dynamic>>> get pocketListStream {
+    Timer.run(() => _pocketListController.add(List.from(pocketList)));
+    return _pocketListController.stream;
+  }
 
   static void initLocal() {
     travelPlan = [
@@ -107,9 +102,7 @@ class Db {
       }
     ];
 
-    expenses = [];
-
-    final List<Map<String, String>> localShops = [
+    pocketList = [
       {"name": "MaxValu 博多祇園店", "category": "購物"},
       {"name": "いくら博多店 はんばーぐと", "category": "正餐"},
       {"name": "博多水炊 濱田屋 本店", "category": "正餐"},
@@ -163,33 +156,13 @@ class Db {
       {"name": "百藥", "category": "Bar"},
       {"name": "Oscar", "category": "Bar"}
     ];
-    pocketList = localShops;
-
-    luggage = [
-      {"id": "L1", "name": "護照、日幣現金、隨身包", "checked": false},
-      {"id": "L2", "name": "衣服褲子、換洗保養旅行裝", "checked": false},
-      {"id": "L3", "name": "行動電源、充電線與充電頭", "checked": false},
-    ];
-    souvenirs = [];
-
-    coupons = [
-      {"category_id": 1, "mall": "天神岩田屋 (IWATAYA)", "benefit": "5% 折扣 Guest Card + 10% 免稅", "note": "至新館7樓退稅櫃台領取", "url": "https://www.iwataya-mitsukoshi.mistore.jp/"},
-      {"category_id": 1, "mall": "博多阪急百貨 (Hakata Hankyu)", "benefit": "外國旅客專屬 5% 優惠券", "note": "至1樓服務台出示護照領取", "url": "https://www.hankyu-dept.co.jp/"},
-      {"category_id": 1, "mall": "福岡大丸百貨 (DAIMARU Tenjin)", "benefit": "5% 特典優惠券 + 10% 免稅", "note": "東館5樓海外顧客服務台領取", "url": "https://www.daimaru-fukuoka.jp/"},
-      {"category_id": 2, "mall": "驚安殿堂 唐吉訶德", "benefit": "免稅 10% + 滿一萬日圓現折 5%", "note": "結帳刷讀動態免稅電子條碼", "url": "https://www.donki.com/"},
-      {"category_id": 3, "mall": "Bic Camera 天神館", "benefit": "免稅 10% + 電器折 7% / 藥妝折 5%", "note": "出示聯名信用卡或 Bic Camera 免稅折價券", "url": "https://www.biccamera.com/"}
-    ];
 
     refreshAllStreams();
   }
 
   static void refreshAllStreams() {
     _travelPlanController.add(List.from(travelPlan));
-    _expensesController.add(List.from(expenses));
     _pocketListController.add(List.from(pocketList));
-    _luggageController.add(List.from(luggage));
-    _souvenirsController.add(List.from(souvenirs));
-    _couponsController.add(List.from(coupons));
   }
 }
 
@@ -225,6 +198,7 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false, // 避免鍵盤彈起時壓縮到首頁畫面佈局
       appBar: AppBar(
         title: const Text('FUKUOKA INDUSTRIAL TRIP', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, letterSpacing: 1.5)),
         backgroundColor: IndustrialStyle.accentOrange,
@@ -289,12 +263,16 @@ class _DashboardPageState extends State<DashboardPage> {
                   crossAxisSpacing: 16,
                   childAspectRatio: 1.1,
                   children: [
-                    _buildMenuCard(context, '日文菜單翻譯 DECODER', Icons.g_translate, const MenuTranslatorPage()),
-                    _buildMenuCard(context, '記帳本 LEDGER', Icons.calculate, const LedgerPage()),
-                    _buildMenuCard(context, '口袋名單 STORES', Icons.restaurant, const PocketListPage()),
-                    _buildMenuCard(context, '行李清單 BAG', Icons.backpack, const ChecklistPage(collectionName: 'luggage', title: '行李勾選清單')),
-                    _buildMenuCard(context, '伴手禮 GIFT', Icons.card_giftcard, const ChecklistPage(collectionName: 'souvenirs', title: '伴手禮勾選清單')),
-                    _buildMenuCard(context, '折價券 COUPONS', Icons.shopping_bag, const CouponPage()),
+                    _buildMenuCard(context, '日文菜單翻譯 DECODER', Icons.g_translate, () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const MenuTranslatorPage()));
+                    }),
+                    _buildMenuCard(context, '口袋名單 STORES', Icons.restaurant, () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const PocketListPage()));
+                    }),
+                    _buildMenuCard(context, '折價券 COUPONS', Icons.shopping_bag, () async {
+                      // 點擊折價券按鈕，直接跳轉外部指定 Canva 網頁
+                      await launchUrl(Uri.parse("https://alinchuang.my.canva.site/"), mode: LaunchMode.platformDefault);
+                    }),
                   ],
                 ),
               ],
@@ -337,9 +315,9 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildMenuCard(BuildContext context, String text, IconData icon, Widget targetPage) {
+  Widget _buildMenuCard(BuildContext context, String text, IconData icon, VoidCallback onTap) {
     return InkWell(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => targetPage)),
+      onTap: onTap,
       child: Container(
         decoration: IndustrialStyle.neoBox(color: Colors.white),
         padding: const EdgeInsets.all(12),
@@ -435,8 +413,9 @@ class _TimelinePageState extends State<TimelinePage> {
                 )
               : StreamBuilder<List<Map<String, dynamic>>>(
                   stream: Db.travelPlanStream,
+                  initialData: Db.travelPlan, // 加上初始值防止 Local 模式進頁面轉圈
                   builder: (context, snapshot) {
-                    if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                    if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: CircularProgressIndicator());
                     final currentDayData = snapshot.data!.firstWhere((plan) => plan['day_index'] == _selectedDayIndex);
                     return _buildTimelineList(currentDayData, null);
                   },
@@ -494,7 +473,7 @@ class _TimelinePageState extends State<TimelinePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('🏨 當日住宿飯店 (Elders Home)：', style: TextStyle(color: Colors.grey[700], fontSize: 12, fontWeight: FontWeight.bold)),
+              Text('🏨 當日住宿飯店：', style: TextStyle(color: Colors.grey[700], fontSize: 12, fontWeight: FontWeight.bold)),
               Text(hotel, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: IndustrialStyle.accentOrange)),
               const Divider(color: Colors.black, thickness: 2),
               const Text('搜尋飯店周邊（保證找出結果）：', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900)),
@@ -565,127 +544,6 @@ class _TimelinePageState extends State<TimelinePage> {
   }
 }
 
-class LedgerPage extends StatefulWidget {
-  const LedgerPage({Key? key}) : super(key: key);
-  @override
-  State<LedgerPage> createState() => _LedgerPageState();
-}
-
-class _LedgerPageState extends State<LedgerPage> {
-  String _inputExpression = "0";
-  final double _jpyRate = 0.21;
-
-  void _pressKey(String char) {
-    setState(() {
-      if (char == "C") { _inputExpression = "0"; }
-      else if (_inputExpression == "0") { _inputExpression = char; }
-      else { _inputExpression += char; }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    double twdCalc = (double.tryParse(_inputExpression) ?? 0) * _jpyRate;
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('INDUSTRIAL LEDGER'), backgroundColor: Colors.black, foregroundColor: Colors.white),
-      body: Column(
-        children: [
-          Container(
-            margin: const EdgeInsets.all(16),
-            decoration: IndustrialStyle.neoBox(color: Colors.black),
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  color: Colors.white,
-                  alignment: Alignment.centerRight,
-                  child: Text('¥ $_inputExpression (TWD \$${twdCalc.toStringAsFixed(0)})', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-                ),
-                const SizedBox(height: 12),
-                GridView.count(
-                  shrinkWrap: true,
-                  crossAxisCount: 4,
-                  mainAxisSpacing: 6,
-                  crossAxisSpacing: 6,
-                  childAspectRatio: 1.8,
-                  children: ["7", "8", "9", "C", "4", "5", "6", "記帳", "1", "2", "3", "0"].map((btn) {
-                    return ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: btn == "記帳" ? IndustrialStyle.accentOrange : Colors.grey[900],
-                        foregroundColor: Colors.white,
-                        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-                      ),
-                      onPressed: () {
-                        if (btn == "記帳") {
-                          if (Db.isFirebase) {
-                            FirebaseFirestore.instance.collection('expenses').add({
-                              'jpy': double.parse(_inputExpression),
-                              'twd': twdCalc,
-                              'title': '共用花費記帳'
-                            });
-                          } else {
-                            Db.expenses.add({
-                              'jpy': double.parse(_inputExpression),
-                              'twd': twdCalc,
-                              'title': '共用花費記帳'
-                            });
-                            Db.refreshAllStreams();
-                          }
-                          _pressKey("C");
-                        } else { _pressKey(btn); }
-                      },
-                      child: Text(btn, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-                    );
-                  }).toList(),
-                )
-              ],
-            ),
-          ),
-          Expanded(
-            child: Db.isFirebase
-              ? StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance.collection('expenses').snapshots(),
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                    final docs = snapshot.data!.docs;
-                    return _buildExpensesList(docs.map((d) => d.data() as Map<String, dynamic>).toList());
-                  },
-                )
-              : StreamBuilder<List<Map<String, dynamic>>>(
-                  stream: Db.expensesStream,
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                    return _buildExpensesList(snapshot.data!);
-                  },
-                ),
-          )
-        ],
-      ),
-    );
-  }
-
-  Widget _buildExpensesList(List<Map<String, dynamic>> list) {
-    return ListView.builder(
-      itemCount: list.length,
-      itemBuilder: (context, index) {
-        final data = list[index];
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          shape: const Border(),
-          child: ListTile(
-            title: const Text('旅遊支出項', style: TextStyle(fontWeight: FontWeight.bold)),
-            subtitle: Text('JPY ¥${data['jpy']?.toStringAsFixed(0)}'),
-            trailing: Text('NT \$${data['twd']?.toStringAsFixed(0)}', style: const TextStyle(fontWeight: FontWeight.w900, color: IndustrialStyle.accentOrange)),
-          ),
-        );
-      },
-    );
-  }
-}
-
 class PocketListPage extends StatefulWidget {
   const PocketListPage({Key? key}) : super(key: key);
   @override
@@ -734,8 +592,9 @@ class _PocketListPageState extends State<PocketListPage> {
                 )
               : StreamBuilder<List<Map<String, dynamic>>>(
                   stream: Db.pocketListStream,
+                  initialData: Db.pocketList, // 補上 initialData，解決口袋名單載入轉圈問題！
                   builder: (context, snapshot) {
-                    if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                    if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: CircularProgressIndicator());
                     return _buildPocketList(snapshot.data!);
                   },
                 ),
@@ -778,150 +637,6 @@ class _PocketListPageState extends State<PocketListPage> {
             subtitle: Text(shop['category'] ?? '', style: const TextStyle(color: IndustrialStyle.accentOrange, fontWeight: FontWeight.bold, fontSize: 12)),
             trailing: const Icon(Icons.near_me, color: Colors.black),
             onTap: () => launchUrl(Uri.parse("https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(shop['name'] ?? '')}")),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class ChecklistPage extends StatelessWidget {
-  final String collectionName;
-  final String title;
-  const ChecklistPage({Key? key, required this.collectionName, required this.title}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title), backgroundColor: Colors.black, foregroundColor: Colors.white),
-      body: Db.isFirebase
-        ? StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance.collection(collectionName).snapshots(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-              final docs = snapshot.data!.docs;
-              return _buildChecklist(
-                docs.map((d) => d.data() as Map<String, dynamic>).toList(),
-                (index, val) {
-                  FirebaseFirestore.instance.collection(collectionName).doc(docs[index].id).update({'checked': val});
-                }
-              );
-            },
-          )
-        : StreamBuilder<List<Map<String, dynamic>>>(
-            stream: collectionName == 'luggage' ? Db.luggageStream : Db.souvenirsStream,
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-              return _buildChecklist(
-                snapshot.data!,
-                (index, val) {
-                  if (collectionName == 'luggage') {
-                    Db.luggage[index]['checked'] = val;
-                  } else {
-                    Db.souvenirs[index]['checked'] = val;
-                  }
-                  Db.refreshAllStreams();
-                }
-              );
-            },
-          ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: InkWell(
-          onTap: () {
-            if (Db.isFirebase) {
-              FirebaseFirestore.instance.collection(collectionName).add({'name': '自訂新增清單項', 'checked': false});
-            } else {
-              if (collectionName == 'luggage') {
-                Db.luggage.add({'id': 'L${Db.luggage.length + 1}', 'name': '自訂新增清單項', 'checked': false});
-              } else {
-                Db.souvenirs.add({'id': 'S${Db.souvenirs.length + 1}', 'name': '自訂新增清單項', 'checked': false});
-              }
-              Db.refreshAllStreams();
-            }
-          },
-          child: Container(
-            height: 52,
-            decoration: IndustrialStyle.neoBox(color: Colors.black),
-            alignment: Alignment.center,
-            child: const Text('ADD NEW ITEM +', style: TextStyle(color: IndustrialStyle.accentOrange, fontWeight: FontWeight.w900, fontSize: 15)),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildChecklist(List<Map<String, dynamic>> list, Function(int, bool) onCheckChanged) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: list.length,
-      itemBuilder: (context, index) {
-        final data = list[index];
-        final bool isChecked = data['checked'] ?? false;
-
-        return Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          decoration: IndustrialStyle.neoBox(color: isChecked ? Colors.grey[300]! : Colors.white),
-          child: CheckboxListTile(
-            activeColor: IndustrialStyle.accentOrange,
-            title: Text(data['name'] ?? '', style: TextStyle(fontWeight: FontWeight.bold, decoration: isChecked ? TextDecoration.lineThrough : null)),
-            value: isChecked,
-            onChanged: (val) => onCheckChanged(index, val ?? false),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class CouponPage extends StatelessWidget {
-  const CouponPage({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('福岡優惠券大全 COUPONS'), backgroundColor: Colors.black, foregroundColor: Colors.white),
-      body: Db.isFirebase
-        ? StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance.collection('coupons').orderBy('category_id').snapshots(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-              final list = snapshot.data!.docs.map((d) => d.data() as Map<String, dynamic>).toList();
-              return _buildCouponList(list);
-            },
-          )
-        : StreamBuilder<List<Map<String, dynamic>>>(
-            stream: Db.couponsStream,
-            builder: (context, snapshot) {
-              if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-              return _buildCouponList(snapshot.data!);
-            },
-          ),
-    );
-  }
-
-  Widget _buildCouponList(List<Map<String, dynamic>> list) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: list.length,
-      itemBuilder: (context, index) {
-        final coupon = list[index];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: IndustrialStyle.neoBox(),
-          child: ListTile(
-            title: Text(coupon['mall'] ?? '', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 4),
-                Text('🎁 優惠：${coupon['benefit'] ?? ''}', style: const TextStyle(color: IndustrialStyle.accentOrange, fontWeight: FontWeight.w900, fontSize: 13)),
-                if (coupon['note'] != null)
-                  Text('💡 方式：${coupon['note']}', style: const TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold)),
-              ],
-            ),
-            trailing: const Icon(Icons.open_in_new),
-            onTap: () => launchUrl(Uri.parse(coupon['url'] ?? '')),
           ),
         );
       },
@@ -1115,8 +830,5 @@ Future<void> _initializeFirebaseDataIfNeeded() async {
     for (var plan in initialPlan) {
       await FirebaseFirestore.instance.collection('travel_plan').add(plan);
     }
-    await FirebaseFirestore.instance.collection('luggage').add({"name": "護照、日幣現金、隨身包", "checked": false});
-    await FirebaseFirestore.instance.collection('luggage').add({"name": "衣服褲子、換洗保養旅行裝", "checked": false});
-    await FirebaseFirestore.instance.collection('luggage').add({"name": "行動電源、充電線與充電頭", "checked": false});
   }
 }
