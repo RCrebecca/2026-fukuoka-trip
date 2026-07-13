@@ -63,7 +63,6 @@ class Db {
   static final _travelPlanController = StreamController<List<Map<String, dynamic>>>.broadcast();
   static final _pocketListController = StreamController<List<Map<String, dynamic>>>.broadcast();
 
-  // 當 Stream 被監聽時，主動噴出當前快照資料，徹底解決進頁面無限轉圈的問題
   static Stream<List<Map<String, dynamic>>> get travelPlanStream {
     Timer.run(() => _travelPlanController.add(List.from(travelPlan)));
     return _travelPlanController.stream;
@@ -179,28 +178,47 @@ class BlackOrangeTravelApp extends StatelessWidget {
           bodyLarge: TextStyle(fontFamily: 'Arial Black', fontWeight: FontWeight.w900, color: Colors.black),
         ),
       ),
-      home: const DashboardPage(),
+      home: const MainNavigatorScreen(),
     );
   }
 }
 
-class DashboardPage extends StatefulWidget {
-  const DashboardPage({Key? key}) : super(key: key);
+// === 全新的主導航頁面 ===
+class MainNavigatorScreen extends StatefulWidget {
+  const MainNavigatorScreen({Key? key}) : super(key: key);
   @override
-  State<DashboardPage> createState() => _DashboardPageState();
+  State<MainNavigatorScreen> createState() => _MainNavigatorScreenState();
 }
 
-class _DashboardPageState extends State<DashboardPage> {
+class _MainNavigatorScreenState extends State<MainNavigatorScreen> {
+  int _currentIndex = 0;
   bool _showFloatingCalc = false;
   double _calcJpy = 0;
   final double _rate = 0.21;
 
+  final List<Widget> _pages = [
+    const TimelinePage(),
+    const PocketListPage(),
+    const TranslationToolsPage(),
+  ];
+
+  void _onItemTapped(int index) async {
+    if (index == 3) {
+      // 點擊「折價券」直接開啟 Canva 網頁，不切換頁面狀態
+      await launchUrl(Uri.parse("https://alinchuang.my.canva.site/"), mode: LaunchMode.platformDefault);
+    } else {
+      setState(() {
+        _currentIndex = index;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: false, // 避免鍵盤彈起時壓縮到首頁畫面佈局
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
-        title: const Text('FUKUOKA INDUSTRIAL TRIP', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18, letterSpacing: 1.5)),
+        title: const Text('FUKUOKA INDUSTRIAL TRIP', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.2)),
         backgroundColor: IndustrialStyle.accentOrange,
         foregroundColor: Colors.black,
         centerTitle: true,
@@ -209,80 +227,12 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
       body: Stack(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: ListView(
-              children: [
-                Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: IndustrialStyle.neoBox(color: Colors.white),
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.wb_sunny, size: 48, color: IndustrialStyle.accentOrange),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('今日福岡天氣 TODAY', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
-                            const Text('☀️ 26°C ~ 30°C 晴朗', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-                            Text('💡 穿著建議：早晚微涼，長輩出門記得帶件「薄防風外套」唷！', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey[800])),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                InkWell(
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TimelinePage())),
-                  child: Container(
-                    height: 120,
-                    margin: const EdgeInsets.only(bottom: 16),
-                    decoration: IndustrialStyle.neoBox(color: IndustrialStyle.accentOrange),
-                    padding: const EdgeInsets.all(16),
-                    child: const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.calendar_view_day, size: 32, color: Colors.black),
-                        SizedBox(height: 6),
-                        Text('每日行程表 TIMELINE', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
-                        Text('橫向日期切換 · 飯店周邊日本在地五大快捷搜尋', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-                  ),
-                ),
-                
-                GridView.count(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 16,
-                  crossAxisSpacing: 16,
-                  childAspectRatio: 1.1,
-                  children: [
-                    _buildMenuCard(context, '日文菜單翻譯 DECODER', Icons.g_translate, () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const MenuTranslatorPage()));
-                    }),
-                    _buildMenuCard(context, '口袋名單 STORES', Icons.restaurant, () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const PocketListPage()));
-                    }),
-                    _buildMenuCard(context, '折價券 COUPONS', Icons.shopping_bag, () async {
-                      // 點擊折價券按鈕，直接跳轉外部指定 Canva 網頁
-                      await launchUrl(Uri.parse("https://alinchuang.my.canva.site/"), mode: LaunchMode.platformDefault);
-                    }),
-                  ],
-                ),
-              ],
-            ),
-          ),
+          _pages[_currentIndex],
           
           if (_showFloatingCalc)
             Positioned(
               right: 16,
-              bottom: 90,
+              bottom: 16,
               child: Container(
                 width: 210,
                 padding: const EdgeInsets.all(12),
@@ -312,21 +262,24 @@ class _DashboardPageState extends State<DashboardPage> {
         onPressed: () { setState(() { _showFloatingCalc = !_showFloatingCalc; }); },
         child: const Icon(Icons.currency_exchange, size: 28),
       ),
-    );
-  }
-
-  Widget _buildMenuCard(BuildContext context, String text, IconData icon, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        decoration: IndustrialStyle.neoBox(color: Colors.white),
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 32, color: Colors.black),
-            const SizedBox(height: 8),
-            Text(text, textAlign: TextAlign.center, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900)),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          border: Border(top: BorderSide(color: Colors.black, width: 4)),
+        ),
+        child: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Colors.white,
+          selectedItemColor: IndustrialStyle.accentOrange,
+          unselectedItemColor: Colors.grey[600],
+          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12),
+          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+          currentIndex: _currentIndex < 3 ? _currentIndex : 0, 
+          onTap: _onItemTapped,
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.calendar_view_day), label: '行程'),
+            BottomNavigationBarItem(icon: Icon(Icons.restaurant), label: '口袋名單'),
+            BottomNavigationBarItem(icon: Icon(Icons.g_translate), label: '翻譯'),
+            BottomNavigationBarItem(icon: Icon(Icons.shopping_bag), label: '折價券'),
           ],
         ),
       ),
@@ -334,6 +287,7 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 }
 
+// === 行程表頁面 (現在包含天氣資訊與優化版地圖連結) ===
 class TimelinePage extends StatefulWidget {
   const TimelinePage({Key? key}) : super(key: key);
   @override
@@ -365,98 +319,118 @@ class _TimelinePageState extends State<TimelinePage> {
     await launchUrl(Uri.parse(encodedUrl), mode: LaunchMode.platformDefault);
   }
 
-  void _getNavigationToEvent(String destination) async {
-    final String encodedUrl = "https://www.google.com/maps/dir/?api=1&destination=${Uri.encodeComponent(destination)}";
+  // 修改：改為單純在 Google Maps 搜尋該地點，避免導航起點抓不到的問題
+  void _searchEventOnMap(String destination) async {
+    final String encodedUrl = "https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(destination)}";
     await launchUrl(Uri.parse(encodedUrl), mode: LaunchMode.platformDefault);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('TIMELINE 行程表'), backgroundColor: Colors.black, foregroundColor: Colors.white),
-      body: Column(
-        children: [
-          Container(
-            height: 65,
-            color: Colors.black,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: _dates.length,
-              itemBuilder: (context, index) {
-                final isSelected = _selectedDayIndex == index;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 10),
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isSelected ? IndustrialStyle.accentOrange : Colors.grey[900],
-                      foregroundColor: Colors.white,
-                      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-                    ),
-                    onPressed: () { setState(() { _selectedDayIndex = index; }); },
-                    child: Text(_dates[index], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                  ),
-                );
-              },
-            ),
-          ),
-          Expanded(
-            child: Db.isFirebase 
-              ? StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance.collection('travel_plan').where('day_index', isEqualTo: _selectedDayIndex).snapshots(),
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                    final docs = snapshot.data!.docs;
-                    if (docs.isEmpty) return const Center(child: Text('暫無行程數據'));
-                    final data = docs.first.data() as Map<String, dynamic>;
-                    return _buildTimelineList(data, docs.first.reference);
-                  },
-                )
-              : StreamBuilder<List<Map<String, dynamic>>>(
-                  stream: Db.travelPlanStream,
-                  initialData: Db.travelPlan, // 加上初始值防止 Local 模式進頁面轉圈
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: CircularProgressIndicator());
-                    final currentDayData = snapshot.data!.firstWhere((plan) => plan['day_index'] == _selectedDayIndex);
-                    return _buildTimelineList(currentDayData, null);
-                  },
+    return Column(
+      children: [
+        // 移除了 AppBar，並將天氣資訊整併到行程表最上方
+        Container(
+          margin: const EdgeInsets.all(16),
+          decoration: IndustrialStyle.neoBox(color: Colors.white),
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              const Icon(Icons.wb_sunny, size: 48, color: IndustrialStyle.accentOrange),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('今日福岡天氣 TODAY', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                    const Text('☀️ 26°C ~ 30°C 晴朗', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+                    Text('💡 穿著建議：早晚微涼，長輩出門記得帶件「薄防風外套」唷！', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey[800])),
+                  ],
                 ),
-          )
-        ],
-      ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: InkWell(
-          onTap: () {
-            if (Db.isFirebase) {
-              FirebaseFirestore.instance.collection('travel_plan').where('day_index', isEqualTo: _selectedDayIndex).get().then((snap) {
-                if (snap.docs.isNotEmpty) {
-                  var doc = snap.docs.first;
-                  final Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-                  List currentItems = data['items'] ?? [];
-                  currentItems.add({'time': '12:00', 'event': '點擊地圖按鈕進行搜尋', 'sub': '自訂新增行程'});
-                  currentItems.sort((a, b) => a['time'].compareTo(b['time']));
-                  doc.reference.update({'items': currentItems});
-                }
-              });
-            } else {
-              final index = Db.travelPlan.indexWhere((element) => element['day_index'] == _selectedDayIndex);
-              if (index != -1) {
-                List currentItems = List.from(Db.travelPlan[index]['items'] ?? []);
-                currentItems.add({'time': '12:00', 'event': '點擊地圖按鈕進行搜尋', 'sub': '自訂新增行程'});
-                currentItems.sort((a, b) => a['time'].compareTo(b['time']));
-                Db.travelPlan[index]['items'] = currentItems;
-                Db.refreshAllStreams();
-              }
-            }
-          },
-          child: Container(
-            height: 52,
-            decoration: IndustrialStyle.neoBox(color: IndustrialStyle.accentOrange),
-            alignment: Alignment.center,
-            child: const Text('ADD TIMELINE EVENT +', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+              ),
+            ],
           ),
         ),
-      ),
+        Container(
+          height: 55,
+          color: Colors.black,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: _dates.length,
+            itemBuilder: (context, index) {
+              final isSelected = _selectedDayIndex == index;
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6),
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isSelected ? IndustrialStyle.accentOrange : Colors.grey[900],
+                    foregroundColor: Colors.white,
+                    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                  ),
+                  onPressed: () { setState(() { _selectedDayIndex = index; }); },
+                  child: Text(_dates[index], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                ),
+              );
+            },
+          ),
+        ),
+        Expanded(
+          child: Db.isFirebase 
+            ? StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance.collection('travel_plan').where('day_index', isEqualTo: _selectedDayIndex).snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                  final docs = snapshot.data!.docs;
+                  if (docs.isEmpty) return const Center(child: Text('暫無行程數據'));
+                  final data = docs.first.data() as Map<String, dynamic>;
+                  return _buildTimelineList(data, docs.first.reference);
+                },
+              )
+            : StreamBuilder<List<Map<String, dynamic>>>(
+                stream: Db.travelPlanStream,
+                initialData: Db.travelPlan,
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: CircularProgressIndicator());
+                  final currentDayData = snapshot.data!.firstWhere((plan) => plan['day_index'] == _selectedDayIndex);
+                  return _buildTimelineList(currentDayData, null);
+                },
+              ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: InkWell(
+            onTap: () {
+              if (Db.isFirebase) {
+                FirebaseFirestore.instance.collection('travel_plan').where('day_index', isEqualTo: _selectedDayIndex).get().then((snap) {
+                  if (snap.docs.isNotEmpty) {
+                    var doc = snap.docs.first;
+                    final Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+                    List currentItems = data['items'] ?? [];
+                    currentItems.add({'time': '12:00', 'event': '點擊地圖按鈕進行搜尋', 'sub': '自訂新增行程'});
+                    currentItems.sort((a, b) => a['time'].compareTo(b['time']));
+                    doc.reference.update({'items': currentItems});
+                  }
+                });
+              } else {
+                final index = Db.travelPlan.indexWhere((element) => element['day_index'] == _selectedDayIndex);
+                if (index != -1) {
+                  List currentItems = List.from(Db.travelPlan[index]['items'] ?? []);
+                  currentItems.add({'time': '12:00', 'event': '點擊地圖按鈕進行搜尋', 'sub': '自訂新增行程'});
+                  currentItems.sort((a, b) => a['time'].compareTo(b['time']));
+                  Db.travelPlan[index]['items'] = currentItems;
+                  Db.refreshAllStreams();
+                }
+              }
+            },
+            child: Container(
+              height: 52,
+              decoration: IndustrialStyle.neoBox(color: IndustrialStyle.accentOrange),
+              alignment: Alignment.center,
+              child: const Text('ADD TIMELINE EVENT +', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -465,7 +439,7 @@ class _TimelinePageState extends State<TimelinePage> {
     final List items = data['items'] ?? [];
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       children: [
         Container(
           decoration: IndustrialStyle.neoBox(color: Colors.white),
@@ -529,9 +503,9 @@ class _TimelinePageState extends State<TimelinePage> {
                         foregroundColor: Colors.white,
                         shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                       ),
-                      onPressed: () => _getNavigationToEvent(item['event'] ?? ''),
-                      icon: const Icon(Icons.directions, size: 16),
-                      label: const Text('打開地圖與交通路徑 🧭', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12)),
+                      onPressed: () => _searchEventOnMap(item['event'] ?? ''),
+                      icon: const Icon(Icons.location_on, size: 16),
+                      label: const Text('開啟地圖定位 🗺️', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12)),
                     )
                   ],
                 ),
@@ -556,76 +530,66 @@ class _PocketListPageState extends State<PocketListPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('口袋名單庫 STORES'), backgroundColor: Colors.black, foregroundColor: Colors.white),
-      body: Column(
-        children: [
-          SizedBox(
-            height: 55,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: _categories.length,
-              itemBuilder: (context, index) {
-                final cat = _categories[index];
-                final isSelected = _selectedCategory == cat;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 8),
-                  child: ChoiceChip(
-                    label: Text(cat, style: TextStyle(color: isSelected ? Colors.white : Colors.black, fontWeight: FontWeight.bold)),
-                    selected: isSelected,
-                    selectedColor: IndustrialStyle.accentOrange,
-                    onSelected: (val) { setState(() { _selectedCategory = cat; }); },
-                  ),
-                );
-              },
-            ),
-          ),
-          Expanded(
-            child: Db.isFirebase
-              ? StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance.collection('pocket_list').snapshots(),
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                    final list = snapshot.data!.docs.map((d) => d.data() as Map<String, dynamic>).toList();
-                    return _buildPocketList(list);
-                  },
-                )
-              : StreamBuilder<List<Map<String, dynamic>>>(
-                  stream: Db.pocketListStream,
-                  initialData: Db.pocketList, // 補上 initialData，解決口袋名單載入轉圈問題！
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: CircularProgressIndicator());
-                    return _buildPocketList(snapshot.data!);
-                  },
+    return Column(
+      children: [
+        SizedBox(
+          height: 55,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: _categories.length,
+            itemBuilder: (context, index) {
+              final cat = _categories[index];
+              final isSelected = _selectedCategory == cat;
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 8),
+                child: ChoiceChip(
+                  label: Text(cat, style: TextStyle(color: isSelected ? Colors.white : Colors.black, fontWeight: FontWeight.bold)),
+                  selected: isSelected,
+                  selectedColor: IndustrialStyle.accentOrange,
+                  onSelected: (val) { setState(() { _selectedCategory = cat; }); },
                 ),
+              );
+            },
           ),
-        ],
-      ),
+        ),
+        Expanded(
+          child: Db.isFirebase
+            ? StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance.collection('pocket_list').snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                  final list = snapshot.data!.docs.map((d) => d.data() as Map<String, dynamic>).toList();
+                  return _buildPocketList(list);
+                },
+              )
+            : StreamBuilder<List<Map<String, dynamic>>>(
+                stream: Db.pocketListStream,
+                initialData: Db.pocketList,
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: CircularProgressIndicator());
+                  return _buildPocketList(snapshot.data!);
+                },
+              ),
+        ),
+      ],
     );
   }
 
   Widget _buildPocketList(List<Map<String, dynamic>> rawList) {
     final docs = rawList.where((data) {
       final String dbCategory = data['category'] ?? '';
-      if (_selectedCategory == "全部") {
-        return true;
-      } else if (_selectedCategory == "餐廳") {
-        return dbCategory == "正餐" || dbCategory == "早餐" || dbCategory == "餐廳" || dbCategory == "外帶" || dbCategory == "Bar";
-      } else if (_selectedCategory == "咖啡") {
-        return dbCategory == "咖啡/午茶" || dbCategory == "點心" || dbCategory.contains("咖啡");
-      } else if (_selectedCategory == "超市") {
-        return dbCategory == "購物" || dbCategory == "超市";
-      } else if (_selectedCategory == "伴手禮") {
-        return dbCategory == "伴手禮";
-      }
+      if (_selectedCategory == "全部") return true;
+      if (_selectedCategory == "餐廳") return dbCategory == "正餐" || dbCategory == "早餐" || dbCategory == "餐廳" || dbCategory == "外帶" || dbCategory == "Bar";
+      if (_selectedCategory == "咖啡") return dbCategory == "咖啡/午茶" || dbCategory == "點心" || dbCategory.contains("咖啡");
+      if (_selectedCategory == "超市") return dbCategory == "購物" || dbCategory == "超市";
+      if (_selectedCategory == "伴手禮") return dbCategory == "伴手禮";
       return dbCategory == _selectedCategory;
     }).toList();
 
-    if (docs.isEmpty) {
-      return const Center(child: Text('此分類下暫無店家資料'));
-    }
+    if (docs.isEmpty) return const Center(child: Text('此分類下暫無店家資料'));
 
     return ListView.builder(
+      padding: const EdgeInsets.only(bottom: 80), // 預留空間給計算機
       itemCount: docs.length,
       itemBuilder: (context, index) {
         final shop = docs[index];
@@ -644,155 +608,83 @@ class _PocketListPageState extends State<PocketListPage> {
   }
 }
 
-class MenuTranslatorPage extends StatefulWidget {
-  const MenuTranslatorPage({Key? key}) : super(key: key);
-  @override
-  State<MenuTranslatorPage> createState() => _MenuTranslatorPageState();
-}
+// === 全新改版的翻譯神器頁面 ===
+class TranslationToolsPage extends StatelessWidget {
+  const TranslationToolsPage({Key? key}) : super(key: key);
 
-class _MenuTranslatorPageState extends State<MenuTranslatorPage> {
-  int _activeTab = 0;
-  final List<String> _tabs = ["🍜 麵食", "🥩 肉類", "🍣 海鮮", "🍺 飲料", "🗣️ 常用對話"];
-
-  final List<List<Map<String, String>>> _foodData = [
-    [
-      {"jp": "豚骨ラーメン", "zh": "豚骨拉麵", "pron": "ton-kotsu raa-men"},
-      {"jp": "うどん", "zh": "烏龍麵", "pron": "u-don"},
-      {"jp": "そば", "zh": "蕎麥麵", "pron": "so-ba"},
-      {"jp": "替え玉", "zh": "加麵", "pron": "ka-e da-ma"},
-    ],
-    [
-      {"jp": "カルビ", "zh": "牛五花肉", "pron": "ka-ru-bi"},
-      {"jp": "ロース", "zh": "牛里肌/沙朗", "pron": "roo-su"},
-      {"jp": "タン", "zh": "牛舌", "pron": "tan"},
-      {"jp": "焼き鳥", "zh": "烤雞肉串", "pron": "ya-ki-to-ri"},
-    ],
-    [
-      {"jp": "すし", "zh": "壽司", "pron": "su-shi"},
-      {"jp": "さしみ", "zh": "生魚片", "pron": "sa-shi-mi"},
-      {"jp": "エビ", "zh": "蝦子", "pron": "e-bi"},
-      {"jp": "マグロ", "zh": "鮪魚", "pron": "ma-gu-ro"},
-    ],
-    [
-      {"jp": "ビール", "zh": "啤酒", "pron": "bii-ru"},
-      {"jp": "日本酒", "zh": "日本清酒", "pron": "ni-hon-shu"},
-      {"jp": "お茶", "zh": "綠茶/熱茶", "pron": "o-cha"},
-      {"jp": "お水", "zh": "冰水 (免費)", "pron": "o-mi-zu"},
-    ],
-    [
-      {"jp": "これ、ください", "zh": "請給我這個 (指著菜單)", "pron": "ko-re ku-da-sai"},
-      {"jp": "お会計、お願いします", "zh": "請幫我結帳", "pron": "o-kai-kei o-nei-gai-shi-masu"},
-      {"jp": "すみません", "zh": "不好意思 (呼叫店員)", "pron": "su-mi-ma-sen"},
-      {"jp": "クレジットカードは使えますか", "zh": "可以刷信用卡嗎？", "pron": "ku-re-jit-to kaa-do tsuka-e-masu-ka"},
-    ]
-  ];
-
-  void _showGiantTextDialog(String jp, String zh) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.white,
-        shape: const Border(),
-        title: const Text('👉 請直接把手機螢幕給日本店員看：', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Divider(color: Colors.black, thickness: 3),
-            const SizedBox(height: 16),
-            Text(jp, textAlign: TextAlign.center, style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: IndustrialStyle.accentOrange)),
-            const SizedBox(height: 16),
-            Text('中文意思：$zh', textAlign: TextAlign.center, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black)),
-          ],
-        ),
-        actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.black, 
-              foregroundColor: Colors.white, 
-              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-            ),
-            onPressed: () => Navigator.pop(context),
-            child: const Text('關閉視窗 CLOSE', style: TextStyle(fontWeight: FontWeight.bold)),
-          )
-        ],
-      ),
-    );
+  void _launchAppOrWeb(String url) async {
+    final Uri uri = Uri.parse(url);
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('🗣️ 長輩專用：日文點餐解碼器'), backgroundColor: Colors.black),
-      body: Column(
-        children: [
-          SizedBox(
-            height: 60,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: _tabs.length,
-              itemBuilder: (context, index) {
-                final isSelected = _activeTab == index;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isSelected ? IndustrialStyle.accentOrange : Colors.grey[900],
-                      foregroundColor: Colors.white,
-                      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-                    ),
-                    onPressed: () { setState(() { _activeTab = index; }); },
-                    child: Text(_tabs[index], style: const TextStyle(fontWeight: FontWeight.bold)),
-                  ),
-                );
-              },
+    return ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        const Text('長輩必備翻譯神器', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 8),
+        const Text('點擊下方按鈕，直接啟動最強大的翻譯工具。', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 24),
+        
+        // Google Translate Card
+        InkWell(
+          onTap: () => _launchAppOrWeb('https://translate.google.com/?sl=ja&tl=zh-TW&op=translate'),
+          child: Container(
+            decoration: IndustrialStyle.neoBox(color: Colors.white),
+            padding: const EdgeInsets.all(20),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.camera_alt, size: 36, color: IndustrialStyle.accentOrange),
+                    SizedBox(width: 12),
+                    Expanded(child: Text('Google 智慧鏡頭', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900))),
+                  ],
+                ),
+                SizedBox(height: 12),
+                Text('看不懂日文菜單？點擊打開 Google 翻譯，選擇「相機」圖示，直接對著菜單拍照就能看懂！', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, height: 1.5)),
+                SizedBox(height: 16),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text('開啟拍照翻譯 ➔', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: Colors.blueAccent)),
+                )
+              ],
             ),
           ),
-          Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.all(16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 16,
-                crossAxisSpacing: 16,
-                childAspectRatio: 0.95,
-              ),
-              itemCount: _foodData[_activeTab].length,
-              itemBuilder: (context, index) {
-                final item = _foodData[_activeTab][index];
-                return Container(
-                  decoration: IndustrialStyle.neoBox(),
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(item['jp']!, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: IndustrialStyle.accentOrange)),
-                          const SizedBox(height: 2),
-                          Text('🔊 拼音: ${item['pron']!}', style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                      Text(item['zh']!, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black)),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.black,
-                          foregroundColor: Colors.white,
-                          minimumSize: const Size(double.infinity, 32),
-                          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-                        ),
-                        onPressed: () => _showGiantTextDialog(item['jp']!, item['zh']!),
-                        child: const Text('👉 大字給店員看', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                      )
-                    ],
-                  ),
-                );
-              },
+        ),
+        
+        const SizedBox(height: 24),
+
+        // VoiceTra Card
+        InkWell(
+          onTap: () => _launchAppOrWeb('https://voicetra.nict.go.jp/'),
+          child: Container(
+            decoration: IndustrialStyle.neoBox(color: Colors.black),
+            padding: const EdgeInsets.all(20),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.mic, size: 36, color: Colors.white),
+                    SizedBox(width: 12),
+                    Expanded(child: Text('VoiceTra 語音翻譯', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white))),
+                  ],
+                ),
+                SizedBox(height: 12),
+                Text('想直接跟日本店員講話？這是日本開發的最強語音翻譯 APP，按住麥克風講中文，它會直接幫你講日文！', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, height: 1.5, color: Colors.white70)),
+                SizedBox(height: 16),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Text('開啟語音對話 ➔', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: IndustrialStyle.accentOrange)),
+                )
+              ],
             ),
-          )
-        ],
-      ),
+          ),
+        ),
+      ],
     );
   }
 }
