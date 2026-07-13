@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // 導入本機儲存套件
+import 'dart:convert'; // 導入 JSON 轉換工具
 import 'dart:async';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // 👇 這裡已經換成你專屬的福岡旅遊 App 金鑰囉！
+  // 你的專屬 Firebase 金鑰
   const String apiKey = "AIzaSyAsvVaZyk-MwAfmGhtnQbTnKfLNLad5myY";
 
   if (apiKey != "YOUR_API_KEY" && apiKey.isNotEmpty) {
@@ -35,6 +37,7 @@ void main() async {
 
   runApp(const BlackOrangeTravelApp());
 }
+
 class IndustrialStyle {
   static const Color bgMarble = Color(0xFFEFEFEF);
   static const Color strokeBlack = Color(0xFF000000);
@@ -72,34 +75,43 @@ class Db {
     return _pocketListController.stream;
   }
 
-  static void initLocal() {
-    travelPlan = [
-      {
-        "day_index": 0, "date": "9/25 (五)", "title": "Day 1 · 出發與糸島",
-        "hotel_name": "糸島 Seven*Seven (住宿房價 NT\$16,640)",
-        "items": [
-          {"time": "07:00", "event": "星宇航空 JX840", "sub": "09:35桃園機場 - 13:05福岡機場"},
-          {"time": "14:00", "event": "飯店辦理 Check In", "sub": "seven x seven 糸島"},
-          {"time": "16:00", "event": "糸島海鮮堂 二見ヶ浦本店", "sub": "享用超豐富海鮮"},
-          {"time": "17:00", "event": "二見ヶ浦海岸夫婦岩", "sub": "絕美夕陽地標"}
-        ]
-      },
-      {
-        "day_index": 1, "date": "9/26 (六)", "title": "Day 2 · 未排定行程",
-        "hotel_name": "博多祇園櫛田神社前西鐵克魯姆酒店 (3間房共 NT\$24,483)", "items": []
-      },
-      {
-        "day_index": 2, "date": "9/27 (日)", "title": "Day 3 · 未排定行程",
-        "hotel_name": "博多祇園櫛田神社前西鐵克魯姆酒店 (連續入住第2晚)", "items": []
-      },
-      {
-        "day_index": 3, "date": "9/28 (一)", "title": "Day 4 · 返航回家",
-        "hotel_name": "今日退房 (西鐵克魯姆酒店 11:00前)",
-        "items": [
-          {"time": "14:15", "event": "星宇航空 JX841", "sub": "14:15福岡機場 - 15:45桃園機場"}
-        ]
-      }
-    ];
+  // 初始化本機資料庫 (加入了 Future 標籤，解決 void 錯誤)
+  static Future<void> initLocal() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? savedPlan = prefs.getString('travelPlan');
+    
+    if (savedPlan != null) {
+      List<dynamic> decoded = jsonDecode(savedPlan);
+      travelPlan = decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+    } else {
+      travelPlan = [
+        {
+          "day_index": 0, "date": "9/25 (五)", "title": "Day 1 · 出發與糸島",
+          "hotel_name": "糸島 Seven*Seven (住宿房價 NT\$16,640)",
+          "items": [
+            {"time": "07:00", "event": "星宇航空 JX840", "sub": "09:35桃園機場 - 13:05福岡機場"},
+            {"time": "14:00", "event": "飯店辦理 Check In", "sub": "seven x seven 糸島"},
+            {"time": "16:00", "event": "糸島海鮮堂 二見ヶ浦本店", "sub": "享用超豐富海鮮"},
+            {"time": "17:00", "event": "二見ヶ浦海岸夫婦岩", "sub": "絕美夕陽地標"}
+          ]
+        },
+        {
+          "day_index": 1, "date": "9/26 (六)", "title": "Day 2 · 未排定行程",
+          "hotel_name": "博多祇園櫛田神社前西鐵克魯姆酒店 (3間房共 NT\$24,483)", "items": []
+        },
+        {
+          "day_index": 2, "date": "9/27 (日)", "title": "Day 3 · 未排定行程",
+          "hotel_name": "博多祇園櫛田神社前西鐵克魯姆酒店 (連續入住第2晚)", "items": []
+        },
+        {
+          "day_index": 3, "date": "9/28 (一)", "title": "Day 4 · 返航回家",
+          "hotel_name": "今日退房 (西鐵克魯姆酒店 11:00前)",
+          "items": [
+            {"time": "14:15", "event": "星宇航空 JX841", "sub": "14:15福岡機場 - 15:45桃園機場"}
+          ]
+        }
+      ];
+    }
 
     pocketList = [
       {"name": "MaxValu 博多祇園店", "category": "購物"},
@@ -157,6 +169,12 @@ class Db {
     ];
 
     refreshAllStreams();
+  }
+
+  // 將行程存入設備本機
+  static Future<void> saveLocalData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('travelPlan', jsonEncode(travelPlan));
   }
 
   static void refreshAllStreams() {
@@ -334,7 +352,6 @@ class _TimelinePageState extends State<TimelinePage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          // 關鍵修正：允許視窗內容滾動，避免鍵盤遮擋導致 TextField 無法被點擊或編輯
           scrollable: true, 
           backgroundColor: Colors.white,
           shape: const RoundedRectangleBorder(side: BorderSide(color: Colors.black, width: 3), borderRadius: BorderRadius.zero),
@@ -358,7 +375,6 @@ class _TimelinePageState extends State<TimelinePage> {
               ),
               const SizedBox(height: 16),
               
-              // 全新升級：精準定位小幫手區塊
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -386,7 +402,6 @@ class _TimelinePageState extends State<TimelinePage> {
                         shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                       ),
                       onPressed: () {
-                        // 擷取名稱欄位去搜尋，為空則預設搜福岡
                         final query = eventCtrl.text.trim().isNotEmpty ? eventCtrl.text.trim() : '福岡';
                         final String encodedUrl = "https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(query)}";
                         launchUrl(Uri.parse(encodedUrl), mode: LaunchMode.externalApplication);
@@ -445,6 +460,7 @@ class _TimelinePageState extends State<TimelinePage> {
                   docRef.update({'items': items});
                 } else if (localIndex != -1) {
                   Db.travelPlan[localIndex]['items'] = items;
+                  Db.saveLocalData();
                   Db.refreshAllStreams();
                 }
 
@@ -485,6 +501,7 @@ class _TimelinePageState extends State<TimelinePage> {
                 docRef.update({'items': items});
               } else if (localIndex != -1) {
                 Db.travelPlan[localIndex]['items'] = items;
+                Db.saveLocalData();
                 Db.refreshAllStreams();
               }
               Navigator.pop(context);
@@ -671,7 +688,7 @@ class _TimelinePageState extends State<TimelinePage> {
                                 onTap: () => _showEventEditor(data, docRef: docRef, localIndex: localIndex, itemIndex: index),
                                 child: const Padding(padding: EdgeInsets.symmetric(horizontal: 6), child: Icon(Icons.edit, size: 20, color: Colors.blueGrey)),
                               ),
-                              InkWell(
+                              Ink সেল(
                                 onTap: () => _deleteEvent(data, index, docRef: docRef, localIndex: localIndex),
                                 child: const Padding(padding: EdgeInsets.symmetric(horizontal: 6), child: Icon(Icons.delete, size: 20, color: Colors.red)),
                               ),
@@ -749,6 +766,7 @@ class _PocketListPageState extends State<PocketListPage> {
         items.add(newItem);
         items.sort((a, b) => a['time'].toString().compareTo(b['time'].toString()));
         Db.travelPlan[localIndex]['items'] = items;
+        Db.saveLocalData();
         Db.refreshAllStreams();
       }
     }
@@ -765,7 +783,7 @@ class _PocketListPageState extends State<PocketListPage> {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              scrollable: true, // 同步解決口袋名單加入行程時的鍵盤遮擋問題
+              scrollable: true,
               backgroundColor: Colors.white,
               shape: const RoundedRectangleBorder(side: BorderSide(color: Colors.black, width: 3), borderRadius: BorderRadius.zero),
               title: const Text('➕ 將店家加入行程', style: TextStyle(fontWeight: FontWeight.w900)),
