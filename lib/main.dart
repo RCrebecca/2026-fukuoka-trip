@@ -183,7 +183,6 @@ class BlackOrangeTravelApp extends StatelessWidget {
   }
 }
 
-// === 全新的主導航頁面 ===
 class MainNavigatorScreen extends StatefulWidget {
   const MainNavigatorScreen({Key? key}) : super(key: key);
   @override
@@ -204,7 +203,6 @@ class _MainNavigatorScreenState extends State<MainNavigatorScreen> {
 
   void _onItemTapped(int index) async {
     if (index == 3) {
-      // 點擊「折價券」直接開啟 Canva 網頁，不切換頁面狀態
       await launchUrl(Uri.parse("https://alinchuang.my.canva.site/"), mode: LaunchMode.platformDefault);
     } else {
       setState(() {
@@ -287,7 +285,7 @@ class _MainNavigatorScreenState extends State<MainNavigatorScreen> {
   }
 }
 
-// === 行程表頁面 (現在包含天氣資訊與優化版地圖連結) ===
+// === 行程表頁面 (加入完整的 CRUD 功能：新增、編輯、刪除) ===
 class TimelinePage extends StatefulWidget {
   const TimelinePage({Key? key}) : super(key: key);
   @override
@@ -319,17 +317,138 @@ class _TimelinePageState extends State<TimelinePage> {
     await launchUrl(Uri.parse(encodedUrl), mode: LaunchMode.platformDefault);
   }
 
-  // 修改：改為單純在 Google Maps 搜尋該地點，避免導航起點抓不到的問題
   void _searchEventOnMap(String destination) async {
     final String encodedUrl = "https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(destination)}";
     await launchUrl(Uri.parse(encodedUrl), mode: LaunchMode.platformDefault);
+  }
+
+  // 彈出視窗：新增與編輯行程
+  void _showEventEditor(Map<String, dynamic> dayData, {DocumentReference? docRef, int localIndex = -1, int? itemIndex}) {
+    final bool isEdit = itemIndex != null;
+    final Map<String, dynamic>? existingItem = isEdit ? dayData['items'][itemIndex] : null;
+
+    final timeCtrl = TextEditingController(text: existingItem?['time'] ?? '12:00');
+    final eventCtrl = TextEditingController(text: existingItem?['event'] ?? '');
+    final subCtrl = TextEditingController(text: existingItem?['sub'] ?? '');
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          shape: const RoundedRectangleBorder(side: BorderSide(color: Colors.black, width: 3), borderRadius: BorderRadius.zero),
+          title: Text(isEdit ? '✏️ 編輯行程' : '➕ 新增行程', style: const TextStyle(fontWeight: FontWeight.w900)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: timeCtrl, 
+                decoration: const InputDecoration(labelText: '時間 (例：14:30)', border: OutlineInputBorder(), focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: IndustrialStyle.accentOrange, width: 2))),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: eventCtrl, 
+                decoration: const InputDecoration(labelText: '地點 / 事件名稱', border: OutlineInputBorder(), focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: IndustrialStyle.accentOrange, width: 2))),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: subCtrl, 
+                decoration: const InputDecoration(labelText: '備註細節 (可留白)', border: OutlineInputBorder(), focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: IndustrialStyle.accentOrange, width: 2))),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('取消', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: IndustrialStyle.accentOrange,
+                foregroundColor: Colors.white,
+                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+              ),
+              onPressed: () {
+                if (eventCtrl.text.isEmpty) return; // 簡單防呆
+
+                List items = List.from(dayData['items'] ?? []);
+                final newItem = {
+                  'time': timeCtrl.text.trim(),
+                  'event': eventCtrl.text.trim(),
+                  'sub': subCtrl.text.trim()
+                };
+
+                if (isEdit) {
+                  items[itemIndex] = newItem; // 更新現有
+                } else {
+                  items.add(newItem); // 插入新增
+                }
+                
+                // 自動依照時間重新排序
+                items.sort((a, b) => a['time'].toString().compareTo(b['time'].toString()));
+
+                // 執行儲存
+                if (Db.isFirebase && docRef != null) {
+                  docRef.update({'items': items});
+                } else if (localIndex != -1) {
+                  Db.travelPlan[localIndex]['items'] = items;
+                  Db.refreshAllStreams();
+                }
+
+                Navigator.pop(context);
+              },
+              child: const Text('儲存並共享', style: TextStyle(fontWeight: FontWeight.bold)),
+            )
+          ],
+        );
+      }
+    );
+  }
+
+  // 彈出視窗：刪除確認
+  void _deleteEvent(Map<String, dynamic> dayData, int itemIndex, {DocumentReference? docRef, int localIndex = -1}) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(side: BorderSide(color: Colors.black, width: 3), borderRadius: BorderRadius.zero),
+        title: const Text('🗑️ 刪除行程', style: TextStyle(fontWeight: FontWeight.w900)),
+        content: const Text('確定要刪除這個行程嗎？\n刪除後將同步更新給大家。', style: TextStyle(fontWeight: FontWeight.bold, height: 1.5)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+            ),
+            onPressed: () {
+              List items = List.from(dayData['items'] ?? []);
+              items.removeAt(itemIndex);
+
+              // 執行刪除更新
+              if (Db.isFirebase && docRef != null) {
+                docRef.update({'items': items});
+              } else if (localIndex != -1) {
+                Db.travelPlan[localIndex]['items'] = items;
+                Db.refreshAllStreams();
+              }
+              Navigator.pop(context);
+            },
+            child: const Text('確定刪除', style: TextStyle(fontWeight: FontWeight.bold)),
+          )
+        ],
+      )
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // 移除了 AppBar，並將天氣資訊整併到行程表最上方
         Container(
           margin: const EdgeInsets.all(16),
           decoration: IndustrialStyle.neoBox(color: Colors.white),
@@ -383,7 +502,7 @@ class _TimelinePageState extends State<TimelinePage> {
                   final docs = snapshot.data!.docs;
                   if (docs.isEmpty) return const Center(child: Text('暫無行程數據'));
                   final data = docs.first.data() as Map<String, dynamic>;
-                  return _buildTimelineList(data, docs.first.reference);
+                  return _buildTimelineList(data, docRef: docs.first.reference, localIndex: -1);
                 },
               )
             : StreamBuilder<List<Map<String, dynamic>>>(
@@ -391,8 +510,9 @@ class _TimelinePageState extends State<TimelinePage> {
                 initialData: Db.travelPlan,
                 builder: (context, snapshot) {
                   if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: CircularProgressIndicator());
-                  final currentDayData = snapshot.data!.firstWhere((plan) => plan['day_index'] == _selectedDayIndex);
-                  return _buildTimelineList(currentDayData, null);
+                  final localIndex = snapshot.data!.indexWhere((plan) => plan['day_index'] == _selectedDayIndex);
+                  if (localIndex == -1) return const Center(child: Text('無行程資料'));
+                  return _buildTimelineList(snapshot.data![localIndex], docRef: null, localIndex: localIndex);
                 },
               ),
         ),
@@ -400,25 +520,18 @@ class _TimelinePageState extends State<TimelinePage> {
           padding: const EdgeInsets.all(16.0),
           child: InkWell(
             onTap: () {
+              // 點擊新增行程按鈕，抓取目前資料狀態並呼叫彈窗
               if (Db.isFirebase) {
                 FirebaseFirestore.instance.collection('travel_plan').where('day_index', isEqualTo: _selectedDayIndex).get().then((snap) {
                   if (snap.docs.isNotEmpty) {
                     var doc = snap.docs.first;
-                    final Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-                    List currentItems = data['items'] ?? [];
-                    currentItems.add({'time': '12:00', 'event': '點擊地圖按鈕進行搜尋', 'sub': '自訂新增行程'});
-                    currentItems.sort((a, b) => a['time'].compareTo(b['time']));
-                    doc.reference.update({'items': currentItems});
+                    _showEventEditor(doc.data() as Map<String, dynamic>, docRef: doc.reference);
                   }
                 });
               } else {
-                final index = Db.travelPlan.indexWhere((element) => element['day_index'] == _selectedDayIndex);
-                if (index != -1) {
-                  List currentItems = List.from(Db.travelPlan[index]['items'] ?? []);
-                  currentItems.add({'time': '12:00', 'event': '點擊地圖按鈕進行搜尋', 'sub': '自訂新增行程'});
-                  currentItems.sort((a, b) => a['time'].compareTo(b['time']));
-                  Db.travelPlan[index]['items'] = currentItems;
-                  Db.refreshAllStreams();
+                final localIndex = Db.travelPlan.indexWhere((element) => element['day_index'] == _selectedDayIndex);
+                if (localIndex != -1) {
+                  _showEventEditor(Db.travelPlan[localIndex], localIndex: localIndex);
                 }
               }
             },
@@ -434,7 +547,7 @@ class _TimelinePageState extends State<TimelinePage> {
     );
   }
 
-  Widget _buildTimelineList(Map<String, dynamic> data, DocumentReference? ref) {
+  Widget _buildTimelineList(Map<String, dynamic> data, {DocumentReference? docRef, required int localIndex}) {
     final String hotel = data['hotel_name'] ?? '西鐵克魯姆酒店';
     final List items = data['items'] ?? [];
 
@@ -474,45 +587,72 @@ class _TimelinePageState extends State<TimelinePage> {
         if (items.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 40),
-            child: Center(child: Text('此日無預設排定行程。點選下方按鈕新增！')),
+            child: Center(child: Text('此日無排定行程。點選下方按鈕新增！', style: TextStyle(fontWeight: FontWeight.bold))),
           ),
-        ...items.map((item) => Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: IndustrialStyle.neoBox(color: Colors.black),
-              child: Text(item['time'] ?? '00:00', style: const TextStyle(color: IndustrialStyle.accentOrange, fontWeight: FontWeight.bold)),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(12),
-                decoration: IndustrialStyle.neoBox(color: Colors.white),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(item['event'] ?? '', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
-                    if (item['sub'] != null && item['sub'].toString().isNotEmpty)
-                      Text(item['sub'], style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blueAccent,
-                        foregroundColor: Colors.white,
-                        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
-                      ),
-                      onPressed: () => _searchEventOnMap(item['event'] ?? ''),
-                      icon: const Icon(Icons.location_on, size: 16),
-                      label: const Text('開啟地圖定位 🗺️', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12)),
-                    )
-                  ],
-                ),
+        ...items.asMap().entries.map((entry) {
+          int index = entry.key;
+          var item = entry.value;
+
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: IndustrialStyle.neoBox(color: Colors.black),
+                child: Text(item['time'] ?? '00:00', style: const TextStyle(color: IndustrialStyle.accentOrange, fontWeight: FontWeight.bold)),
               ),
-            )
-          ],
-        )).toList(),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: IndustrialStyle.neoBox(color: Colors.white),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: Text(item['event'] ?? '', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15))),
+                          // 加入編輯與刪除按鈕
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              InkWell(
+                                onTap: () => _showEventEditor(data, docRef: docRef, localIndex: localIndex, itemIndex: index),
+                                child: const Padding(padding: EdgeInsets.symmetric(horizontal: 6), child: Icon(Icons.edit, size: 20, color: Colors.blueGrey)),
+                              ),
+                              InkWell(
+                                onTap: () => _deleteEvent(data, index, docRef: docRef, localIndex: localIndex),
+                                child: const Padding(padding: EdgeInsets.symmetric(horizontal: 6), child: Icon(Icons.delete, size: 20, color: Colors.red)),
+                              ),
+                            ],
+                          )
+                        ],
+                      ),
+                      if (item['sub'] != null && item['sub'].toString().isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4, bottom: 8),
+                          child: Text(item['sub'], style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                      const SizedBox(height: 4),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueAccent,
+                          foregroundColor: Colors.white,
+                          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                        ),
+                        onPressed: () => _searchEventOnMap(item['event'] ?? ''),
+                        icon: const Icon(Icons.location_on, size: 16),
+                        label: const Text('開啟地圖定位 🗺️', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12)),
+                      )
+                    ],
+                  ),
+                ),
+              )
+            ],
+          );
+        }).toList(),
       ],
     );
   }
@@ -589,7 +729,7 @@ class _PocketListPageState extends State<PocketListPage> {
     if (docs.isEmpty) return const Center(child: Text('此分類下暫無店家資料'));
 
     return ListView.builder(
-      padding: const EdgeInsets.only(bottom: 80), // 預留空間給計算機
+      padding: const EdgeInsets.only(bottom: 80),
       itemCount: docs.length,
       itemBuilder: (context, index) {
         final shop = docs[index];
@@ -608,7 +748,6 @@ class _PocketListPageState extends State<PocketListPage> {
   }
 }
 
-// === 全新改版的翻譯神器頁面 ===
 class TranslationToolsPage extends StatelessWidget {
   const TranslationToolsPage({Key? key}) : super(key: key);
 
@@ -627,7 +766,6 @@ class TranslationToolsPage extends StatelessWidget {
         const Text('點擊下方按鈕，直接啟動最強大的翻譯工具。', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
         const SizedBox(height: 24),
         
-        // Google Translate Card
         InkWell(
           onTap: () => _launchAppOrWeb('https://translate.google.com/?sl=ja&tl=zh-TW&op=translate'),
           child: Container(
@@ -657,7 +795,6 @@ class TranslationToolsPage extends StatelessWidget {
         
         const SizedBox(height: 24),
 
-        // VoiceTra Card
         InkWell(
           onTap: () => _launchAppOrWeb('https://voicetra.nict.go.jp/'),
           child: Container(
