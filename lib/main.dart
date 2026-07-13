@@ -285,7 +285,6 @@ class _MainNavigatorScreenState extends State<MainNavigatorScreen> {
   }
 }
 
-// === 行程表頁面 (加入完整的 CRUD 功能：新增、編輯、刪除) ===
 class TimelinePage extends StatefulWidget {
   const TimelinePage({Key? key}) : super(key: key);
   @override
@@ -322,7 +321,6 @@ class _TimelinePageState extends State<TimelinePage> {
     await launchUrl(Uri.parse(encodedUrl), mode: LaunchMode.platformDefault);
   }
 
-  // 彈出視窗：新增與編輯行程
   void _showEventEditor(Map<String, dynamic> dayData, {DocumentReference? docRef, int localIndex = -1, int? itemIndex}) {
     final bool isEdit = itemIndex != null;
     final Map<String, dynamic>? existingItem = isEdit ? dayData['items'][itemIndex] : null;
@@ -330,6 +328,7 @@ class _TimelinePageState extends State<TimelinePage> {
     final timeCtrl = TextEditingController(text: existingItem?['time'] ?? '12:00');
     final eventCtrl = TextEditingController(text: existingItem?['event'] ?? '');
     final subCtrl = TextEditingController(text: existingItem?['sub'] ?? '');
+    final mapUrlCtrl = TextEditingController(text: existingItem?['map_url'] ?? '');
 
     showDialog(
       context: context,
@@ -338,24 +337,36 @@ class _TimelinePageState extends State<TimelinePage> {
           backgroundColor: Colors.white,
           shape: const RoundedRectangleBorder(side: BorderSide(color: Colors.black, width: 3), borderRadius: BorderRadius.zero),
           title: Text(isEdit ? '✏️ 編輯行程' : '➕ 新增行程', style: const TextStyle(fontWeight: FontWeight.w900)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: timeCtrl, 
-                decoration: const InputDecoration(labelText: '時間 (例：14:30)', border: OutlineInputBorder(), focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: IndustrialStyle.accentOrange, width: 2))),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: eventCtrl, 
-                decoration: const InputDecoration(labelText: '地點 / 事件名稱', border: OutlineInputBorder(), focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: IndustrialStyle.accentOrange, width: 2))),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: subCtrl, 
-                decoration: const InputDecoration(labelText: '備註細節 (可留白)', border: OutlineInputBorder(), focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: IndustrialStyle.accentOrange, width: 2))),
-              ),
-            ],
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: timeCtrl, 
+                  decoration: const InputDecoration(labelText: '時間 (例：14:30)', border: OutlineInputBorder(), focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: IndustrialStyle.accentOrange, width: 2))),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: eventCtrl, 
+                  decoration: const InputDecoration(labelText: '地點 / 事件名稱', border: OutlineInputBorder(), focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: IndustrialStyle.accentOrange, width: 2))),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: subCtrl, 
+                  decoration: const InputDecoration(labelText: '備註細節 (可留白)', border: OutlineInputBorder(), focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: IndustrialStyle.accentOrange, width: 2))),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: mapUrlCtrl, 
+                  decoration: const InputDecoration(
+                    labelText: 'Google Maps 精準連結 (選填)', 
+                    hintText: '貼上地圖分享網址...',
+                    border: OutlineInputBorder(), 
+                    focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: IndustrialStyle.accentOrange, width: 2))
+                  ),
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -369,25 +380,24 @@ class _TimelinePageState extends State<TimelinePage> {
                 shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
               ),
               onPressed: () {
-                if (eventCtrl.text.isEmpty) return; // 簡單防呆
+                if (eventCtrl.text.isEmpty) return;
 
                 List items = List.from(dayData['items'] ?? []);
                 final newItem = {
                   'time': timeCtrl.text.trim(),
                   'event': eventCtrl.text.trim(),
-                  'sub': subCtrl.text.trim()
+                  'sub': subCtrl.text.trim(),
+                  'map_url': mapUrlCtrl.text.trim(),
                 };
 
                 if (isEdit) {
-                  items[itemIndex] = newItem; // 更新現有
+                  items[itemIndex] = newItem; 
                 } else {
-                  items.add(newItem); // 插入新增
+                  items.add(newItem); 
                 }
                 
-                // 自動依照時間重新排序
                 items.sort((a, b) => a['time'].toString().compareTo(b['time'].toString()));
 
-                // 執行儲存
                 if (Db.isFirebase && docRef != null) {
                   docRef.update({'items': items});
                 } else if (localIndex != -1) {
@@ -405,7 +415,6 @@ class _TimelinePageState extends State<TimelinePage> {
     );
   }
 
-  // 彈出視窗：刪除確認
   void _deleteEvent(Map<String, dynamic> dayData, int itemIndex, {DocumentReference? docRef, int localIndex = -1}) {
     showDialog(
       context: context,
@@ -429,7 +438,6 @@ class _TimelinePageState extends State<TimelinePage> {
               List items = List.from(dayData['items'] ?? []);
               items.removeAt(itemIndex);
 
-              // 執行刪除更新
               if (Db.isFirebase && docRef != null) {
                 docRef.update({'items': items});
               } else if (localIndex != -1) {
@@ -520,7 +528,6 @@ class _TimelinePageState extends State<TimelinePage> {
           padding: const EdgeInsets.all(16.0),
           child: InkWell(
             onTap: () {
-              // 點擊新增行程按鈕，抓取目前資料狀態並呼叫彈窗
               if (Db.isFirebase) {
                 FirebaseFirestore.instance.collection('travel_plan').where('day_index', isEqualTo: _selectedDayIndex).get().then((snap) {
                   if (snap.docs.isNotEmpty) {
@@ -614,7 +621,6 @@ class _TimelinePageState extends State<TimelinePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(child: Text(item['event'] ?? '', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 15))),
-                          // 加入編輯與刪除按鈕
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -642,7 +648,14 @@ class _TimelinePageState extends State<TimelinePage> {
                           foregroundColor: Colors.white,
                           shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
                         ),
-                        onPressed: () => _searchEventOnMap(item['event'] ?? ''),
+                        onPressed: () {
+                          final url = item['map_url']?.toString().trim() ?? '';
+                          if (url.isNotEmpty && (url.startsWith('http://') || url.startsWith('https://'))) {
+                            launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication); 
+                          } else {
+                            _searchEventOnMap(item['event'] ?? ''); 
+                          }
+                        },
                         icon: const Icon(Icons.location_on, size: 16),
                         label: const Text('開啟地圖定位 🗺️', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 12)),
                       )
@@ -667,6 +680,117 @@ class PocketListPage extends StatefulWidget {
 class _PocketListPageState extends State<PocketListPage> {
   String _selectedCategory = "全部";
   final List<String> _categories = ["全部", "餐廳", "超市", "伴手禮", "咖啡"];
+  final List<String> _dayOptions = ["9/25 (五) - Day 1", "9/26 (六) - Day 2", "9/27 (日) - Day 3", "9/28 (一) - Day 4"];
+
+  // 執行將店家寫入行程表的資料庫邏輯
+  Future<void> _saveToTimeline(int dayIndex, String time, String event, String sub, String mapUrl) async {
+    final newItem = {
+      'time': time.trim(),
+      'event': event.trim(),
+      'sub': sub.trim(),
+      'map_url': mapUrl,
+    };
+
+    if (Db.isFirebase) {
+      final snap = await FirebaseFirestore.instance.collection('travel_plan').where('day_index', isEqualTo: dayIndex).get();
+      if (snap.docs.isNotEmpty) {
+        var doc = snap.docs.first;
+        List items = List.from(doc.data()['items'] ?? []);
+        items.add(newItem);
+        items.sort((a, b) => a['time'].toString().compareTo(b['time'].toString()));
+        await doc.reference.update({'items': items});
+      }
+    } else {
+      final localIndex = Db.travelPlan.indexWhere((element) => element['day_index'] == dayIndex);
+      if (localIndex != -1) {
+        List items = List.from(Db.travelPlan[localIndex]['items'] ?? []);
+        items.add(newItem);
+        items.sort((a, b) => a['time'].toString().compareTo(b['time'].toString()));
+        Db.travelPlan[localIndex]['items'] = items;
+        Db.refreshAllStreams(); // 強制推播更新
+      }
+    }
+  }
+
+  // 彈出對話框：設定日期、時間與備註
+  void _showAddToTimelineDialog(BuildContext context, String shopName, String mapUrl) {
+    int selectedDay = 0;
+    final timeCtrl = TextEditingController(text: '12:00');
+    final subCtrl = TextEditingController(text: '來自口袋名單');
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              shape: const RoundedRectangleBorder(side: BorderSide(color: Colors.black, width: 3), borderRadius: BorderRadius.zero),
+              title: const Text('➕ 將店家加入行程', style: TextStyle(fontWeight: FontWeight.w900)),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('📍 $shopName', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: IndustrialStyle.accentOrange)),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<int>(
+                      value: selectedDay,
+                      decoration: const InputDecoration(labelText: '選擇日期', border: OutlineInputBorder(), focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: IndustrialStyle.accentOrange, width: 2))),
+                      items: List.generate(_dayOptions.length, (index) => DropdownMenuItem(value: index, child: Text(_dayOptions[index], style: const TextStyle(fontWeight: FontWeight.bold)))),
+                      onChanged: (val) {
+                        if (val != null) setState(() => selectedDay = val);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: timeCtrl,
+                      decoration: const InputDecoration(labelText: '設定時間 (例：12:30)', border: OutlineInputBorder(), focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: IndustrialStyle.accentOrange, width: 2))),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: subCtrl,
+                      decoration: const InputDecoration(labelText: '行程備註 (選填)', border: OutlineInputBorder(), focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: IndustrialStyle.accentOrange, width: 2))),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('取消', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    foregroundColor: Colors.white,
+                    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+                  ),
+                  onPressed: () async {
+                    // 將資料寫入行程表
+                    await _saveToTimeline(selectedDay, timeCtrl.text, shopName, subCtrl.text, mapUrl);
+                    
+                    if (ctx.mounted) {
+                      Navigator.pop(ctx);
+                      // 顯示成功提示
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('✅ 已成功加入行程表並同步！', style: TextStyle(fontWeight: FontWeight.bold)),
+                          backgroundColor: Colors.green[700],
+                          behavior: SnackBarBehavior.floating,
+                        )
+                      );
+                    }
+                  },
+                  child: const Text('確認儲存', style: TextStyle(fontWeight: FontWeight.bold, color: IndustrialStyle.accentOrange)),
+                )
+              ],
+            );
+          }
+        );
+      }
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -733,14 +857,31 @@ class _PocketListPageState extends State<PocketListPage> {
       itemCount: docs.length,
       itemBuilder: (context, index) {
         final shop = docs[index];
+        final String shopName = shop['name'] ?? '';
+        final String mapUrl = "https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(shopName)}";
+
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           decoration: IndustrialStyle.neoBox(),
           child: ListTile(
-            title: Text(shop['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
+            title: Text(shopName, style: const TextStyle(fontWeight: FontWeight.bold)),
             subtitle: Text(shop['category'] ?? '', style: const TextStyle(color: IndustrialStyle.accentOrange, fontWeight: FontWeight.bold, fontSize: 12)),
-            trailing: const Icon(Icons.near_me, color: Colors.black),
-            onTap: () => launchUrl(Uri.parse("https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(shop['name'] ?? '')}")),
+            // 改為包含兩個按鈕的 Row：一個加行程、一個開地圖
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.add_circle, color: IndustrialStyle.accentOrange, size: 28),
+                  tooltip: '加入行程',
+                  onPressed: () => _showAddToTimelineDialog(context, shopName, mapUrl),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.near_me, color: Colors.black, size: 28),
+                  tooltip: '開啟地圖',
+                  onPressed: () => launchUrl(Uri.parse(mapUrl), mode: LaunchMode.externalApplication),
+                ),
+              ],
+            ),
           ),
         );
       },
